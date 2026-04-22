@@ -1,0 +1,61 @@
+import { state } from './state.js';
+import { getQuarterWeeks, getWeeksRemainingInQuarter, isWeekFuture } from './date-utils.js';
+import { updateFinancialSummary } from './metrics.js';
+
+let activeModalConsultantIndex = -1;
+
+export function openForecastModal(consultantIndex) {
+    const consultant = state.consultantsData[consultantIndex];
+    activeModalConsultantIndex = consultantIndex;
+    const weeksLeft = getWeeksRemainingInQuarter();
+    document.getElementById('modalTitle').textContent = `Set Forecast — ${consultant.name}`;
+    document.getElementById('modalSubtitle').textContent =
+        `${weeksLeft} week${weeksLeft !== 1 ? 's' : ''} remaining in Q${state.currentQuarter.quarter} ${state.currentQuarter.year}`;
+    document.getElementById('modalHrsInput').value = consultant.forecastHoursPerWeek ?? 40;
+    document.getElementById('forecastModal').classList.add('open');
+    setTimeout(() => document.getElementById('modalHrsInput').select(), 50);
+}
+
+function applyForecast() {
+    if (activeModalConsultantIndex < 0) return;
+    const hrsPerWeek = parseFloat(document.getElementById('modalHrsInput').value) || 0;
+    const consultant = state.consultantsData[activeModalConsultantIndex];
+    consultant.forecastHoursPerWeek = hrsPerWeek;
+
+    const quarterWeeks = getQuarterWeeks(state.currentQuarter.year, state.currentQuarter.quarter);
+    quarterWeeks.forEach(week => {
+        if (!isWeekFuture(week)) return;
+        consultant.weeklyHours[week] = hrsPerWeek;
+        const input = document.querySelector(`.week-input[data-consultant="${activeModalConsultantIndex}"][data-week="${week}"]`);
+        if (input) {
+            input.value = hrsPerWeek || '';
+            input.parentElement.classList.remove('empty');
+            input.parentElement.classList.add('actual');
+        }
+    });
+
+    updateFinancialSummary();
+    document.getElementById('forecastModal').classList.remove('open');
+    activeModalConsultantIndex = -1;
+}
+
+export function initModal() {
+    document.getElementById('modalCancel').addEventListener('click', () => {
+        document.getElementById('forecastModal').classList.remove('open');
+        activeModalConsultantIndex = -1;
+    });
+
+    document.getElementById('forecastModal').addEventListener('click', (e) => {
+        if (e.target.id === 'forecastModal') {
+            document.getElementById('forecastModal').classList.remove('open');
+            activeModalConsultantIndex = -1;
+        }
+    });
+
+    document.getElementById('modalApply').addEventListener('click', applyForecast);
+
+    document.getElementById('modalHrsInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') applyForecast();
+        if (e.key === 'Escape') document.getElementById('modalCancel').click();
+    });
+}
