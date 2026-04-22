@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home — Revenue Forecast</title>
+    <link rel="stylesheet" href="styles/layout.css">
+    <style>
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2.5rem;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .nav-brand-icon {
+            font-size: 22px;
+        }
+
+        .btn-signout {
+            padding: 0.4rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: white;
+            font-size: 13px;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .btn-signout:hover {
+            background: #f9fafb;
+            color: #374151;
+        }
+
+        .welcome {
+            margin-bottom: 2rem;
+        }
+
+        .welcome-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 0.25rem;
+        }
+
+        .welcome-sub {
+            font-size: 15px;
+            color: #6b7280;
+        }
+
+        .projects-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .project-tile {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: box-shadow 0.15s, border-color 0.15s;
+        }
+
+        .project-tile:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 16px rgba(59,130,246,0.1);
+        }
+
+        .project-tile-icon {
+            font-size: 28px;
+            margin-bottom: 0.75rem;
+        }
+
+        .project-tile-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.25rem;
+        }
+
+        .project-tile-desc {
+            font-size: 13px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav">
+            <div class="nav-brand">
+                <span class="nav-brand-icon">📊</span>
+                Revenue Forecast
+            </div>
+            <a href="index.html" class="btn-signout">Sign out</a>
+        </nav>
+
+        <div class="welcome">
+            <div class="welcome-title">Welcome back</div>
+            <p class="welcome-sub">Select a project to get started.</p>
+        </div>
+
+        <div class="projects-label">Projects</div>
+        <div class="project-grid">
+            <a href="project.html" class="project-tile">
+                <div class="project-tile-icon">📈</div>
+                <div class="project-tile-name">Project Revenue Forecast</div>
+                <p class="project-tile-desc">Analyze consultant hours and revenue from Workday timecards.</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

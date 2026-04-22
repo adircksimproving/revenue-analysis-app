@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Revenue Forecast</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="styles/upload.css">
+    <link rel="stylesheet" href="styles/metrics.css">
+    <link rel="stylesheet" href="styles/table.css">
+    <link rel="stylesheet" href="styles/chart.css">
+    <link rel="stylesheet" href="styles/modal.css">
+</head>
+<body>
+    <div class="container">
+        <a href="home.html" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:13px; font-weight:500; color:#6b7280; text-decoration:none; margin-bottom:1.5rem;">← Home</a>
+        <h1>Project Revenue Forecast</h1>
+        <p class="subtitle">Upload Workday timecard CSV to analyze consultant hours and revenue</p>
+
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">📊</div>
+            <div class="upload-text">Drop your Workday CSV here</div>
+            <div class="upload-hint">or click to browse files</div>
+            <input type="file" id="fileInput" class="file-input" accept=".csv">
+        </div>
+
+        <div id="errorContainer"></div>
+
+        <div id="metrics" class="metrics" style="display: none;">
+            <div class="metric-card">
+                <div class="metric-label">Total Consultants</div>
+                <div class="metric-value" id="metricConsultants">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Billed Hours to Date</div>
+                <div class="metric-value" id="metricHours">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Amount Billed to Date</div>
+                <div class="metric-value" id="metricForecast">$0</div>
+            </div>
+        </div>
+
+        <div id="financialSummary" class="financial-summary" style="display: none;">
+            <div class="financial-card">
+                <div class="financial-label">Budget</div>
+                <input type="number" class="financial-input" id="inputBudget" placeholder="$0" min="0" />
+            </div>
+            <div class="financial-card actuals">
+                <div class="financial-label">Actuals</div>
+                <div class="financial-value" id="summaryActuals">$0</div>
+            </div>
+            <div class="financial-card forecast" id="forecastToggleTile" title="Click to toggle chart">
+                <div class="financial-label">Forecast <span id="chartToggleIcon" style="font-size:11px; margin-left:4px; opacity:0.6;">▼ chart</span></div>
+                <div class="financial-value" id="summaryForecast">$0</div>
+            </div>
+            <div class="financial-card variance">
+                <div class="financial-label">Variance</div>
+                <div class="financial-value" id="summaryVariance">$0</div>
+            </div>
+        </div>
+
+        <div id="chartContainer" class="chart-container" style="display: none;">
+            <div class="chart-title">Cumulative Revenue — Q<span id="chartQuarterLabel"></span></div>
+            <canvas id="revenueChart"></canvas>
+        </div>
+
+        <div id="tableContainer" class="table-container" style="display: none;">
+            <div class="table-scroll">
+                <table id="dataTable">
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+            <div class="empty-state-icon">📈</div>
+            <p>No data yet. Upload a CSV file to get started.</p>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="forecastModal">
+        <div class="modal-box">
+            <div class="modal-title" id="modalTitle">Set Forecast</div>
+            <div class="modal-subtitle" id="modalSubtitle"></div>
+            <label class="modal-label">Hours per week</label>
+            <input type="number" class="modal-input" id="modalHrsInput" min="0" max="168" />
+            <div class="modal-actions">
+                <button class="btn-cancel" id="modalCancel">Cancel</button>
+                <button class="btn-apply" id="modalApply">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
