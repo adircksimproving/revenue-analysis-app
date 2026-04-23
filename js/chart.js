@@ -1,12 +1,27 @@
 import { state } from './state.js';
-import { getQuarterWeeks, isWeekFuture } from './date-utils.js';
+import { isWeekFuture } from './date-utils.js';
 
 let revenueChart = null;
+
+// Returns all past weeks with actuals plus all future weeks that have a non-zero
+// forecast across any consultant, sorted chronologically.
+export function computeChartWeeks(consultantsData) {
+    const allKeys = new Set();
+    consultantsData.forEach(c => Object.keys(c.weeklyHours).forEach(w => allKeys.add(w)));
+
+    const past = [...allKeys].filter(w => !isWeekFuture(w)).sort();
+    const future = [...allKeys].filter(w =>
+        isWeekFuture(w) &&
+        consultantsData.reduce((sum, c) => sum + (c.weeklyHours[w] || 0), 0) > 0
+    ).sort();
+
+    return [...past, ...future];
+}
 
 export function renderChart() {
     if (state.consultantsData.length === 0) return;
 
-    const weeks = getQuarterWeeks(state.currentQuarter.year, state.currentQuarter.quarter);
+    const weeks = computeChartWeeks(state.consultantsData);
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
     const labels = weeks.map(week => {
