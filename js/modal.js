@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { getQuarterWeeks, getWeeksRemainingInQuarter, isWeekFuture } from './date-utils.js';
 import { updateFinancialSummary } from './metrics.js';
+import { api } from './api.js';
 
 let activeModalConsultantIndex = -1;
 
@@ -16,16 +17,18 @@ export function openForecastModal(consultantIndex) {
     setTimeout(() => document.getElementById('modalHrsInput').select(), 50);
 }
 
-function applyForecast() {
+async function applyForecast() {
     if (activeModalConsultantIndex < 0) return;
     const hrsPerWeek = parseFloat(document.getElementById('modalHrsInput').value) || 0;
     const consultant = state.consultantsData[activeModalConsultantIndex];
     consultant.forecastHoursPerWeek = hrsPerWeek;
 
     const quarterWeeks = getQuarterWeeks(state.currentQuarter.year, state.currentQuarter.quarter);
+    const futureWeeklyHours = {};
     quarterWeeks.forEach(week => {
         if (!isWeekFuture(week)) return;
         consultant.weeklyHours[week] = hrsPerWeek;
+        futureWeeklyHours[week] = hrsPerWeek;
         const input = document.querySelector(`.week-input[data-consultant="${activeModalConsultantIndex}"][data-week="${week}"]`);
         if (input) {
             input.value = hrsPerWeek || '';
@@ -37,6 +40,14 @@ function applyForecast() {
     updateFinancialSummary();
     document.getElementById('forecastModal').classList.remove('open');
     activeModalConsultantIndex = -1;
+
+    if (consultant.id && state.projectId) {
+        try {
+            await api.updateForecast(consultant.id, hrsPerWeek, futureWeeklyHours);
+        } catch (err) {
+            console.error('Failed to persist forecast:', err);
+        }
+    }
 }
 
 export function initModal() {
