@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account — Revenue Forecast</title>
+    <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="styles/account.css">
+    <style>
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2.5rem;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1a1a;
+            text-decoration: none;
+        }
+
+        .nav-brand-icon {
+            font-size: 22px;
+        }
+
+        .btn-signout {
+            padding: 0.4rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: white;
+            font-size: 13px;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .btn-signout:hover {
+            background: #f9fafb;
+            color: #374151;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav">
+            <a href="home.html" class="nav-brand">
+                <span class="nav-brand-icon">📊</span>
+                Revenue Forecast
+            </a>
+            <div class="nav-right">
+                <a href="index.html" class="btn-signout">Sign out</a>
+            </div>
+        </nav>
+
+        <div class="account-header">
+            <div class="account-header-title">Account</div>
+            <p class="account-header-sub">Manage your profile and settings.</p>
+        </div>
+
+        <!-- General User Info -->
+        <div class="section-label">General Information</div>
+        <div class="account-card">
+            <div class="profile-row">
+                <div class="profile-avatar">AD</div>
+                <div class="profile-details">
+                    <div class="profile-name">Austin Dircks</div>
+                    <div class="profile-email">austin.dircks@improving.com</div>
+                    <span class="profile-role">Admin</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="section-label">Settings</div>
+        <div class="account-card">
+            <p class="placeholder-message">Settings will be available in a future update.</p>
+        </div>
+
+        <!-- Programs / Clients -->
+        <div class="section-label">Programs &amp; Clients</div>
+        <div class="account-card">
+            <div class="program-list">
+                <div class="program-item">
+                    <div class="program-header">
+                        <span class="program-icon">🏢</span>
+                        <span class="program-name">Improving</span>
+                    </div>
+                    <div class="project-list">
+                        <div class="project-item">
+                            <span class="project-item-icon">📈</span>
+                            <span class="project-item-name">Project Revenue Forecast</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="program-item">
+                    <div class="program-header">
+                        <span class="program-icon">🏢</span>
+                        <span class="program-name">Acme Corp</span>
+                    </div>
+                    <div class="project-list">
+                        <div class="project-item">
+                            <span class="project-item-icon">📈</span>
+                            <span class="project-item-name">Q2 Staffing Analysis</span>
+                        </div>
+                        <div class="project-item">
+                            <span class="project-item-icon">📈</span>
+                            <span class="project-item-name">Annual Budget Review</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invite New Users -->
+        <div class="section-label">Invite New Users</div>
+        <div class="account-card">
+            <div class="invite-placeholder">
+                <span class="invite-placeholder-icon">✉️</span>
+                <span class="invite-placeholder-text">User invitation will be available in a future update.</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

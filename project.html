@@ -11,10 +11,20 @@
     <link rel="stylesheet" href="styles/table.css">
     <link rel="stylesheet" href="styles/chart.css">
     <link rel="stylesheet" href="styles/modal.css">
+    <link rel="stylesheet" href="styles/account.css">
 </head>
 <body>
     <div class="container">
-        <a href="home.html" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:13px; font-weight:500; color:#6b7280; text-decoration:none; margin-bottom:1.5rem;">← Home</a>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+            <a href="home.html" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:13px; font-weight:500; color:#6b7280; text-decoration:none;">← Home</a>
+            <div class="nav-right">
+                <a href="account.html" class="btn-user">
+                    <div class="btn-user-avatar">AD</div>
+                    Austin Dircks
+                </a>
+                <a href="index.html" class="btn-signout" style="padding:0.4rem 1rem; border:1px solid #e5e7eb; border-radius:6px; background:white; font-size:13px; font-weight:500; color:#6b7280; text-decoration:none;">Sign out</a>
+            </div>
+        </div>
         <h1>Project Revenue Forecast</h1>
         <p class="subtitle">Upload Workday timecard CSV to analyze consultant hours and revenue</p>
 
