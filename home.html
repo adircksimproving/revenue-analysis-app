@@ -216,6 +216,153 @@
             color: #9ca3af;
             font-size: 14px;
         }
+
+        .project-tile-wrapper {
+            position: relative;
+        }
+
+        .tile-menu-btn {
+            position: absolute;
+            top: 0.625rem;
+            right: 0.625rem;
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .tile-menu-btn:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .tile-menu-dropdown {
+            position: absolute;
+            top: 2.75rem;
+            right: 0.5rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            z-index: 10;
+            min-width: 160px;
+            display: none;
+        }
+
+        .tile-menu-dropdown.open {
+            display: block;
+        }
+
+        .tile-menu-item {
+            display: block;
+            width: 100%;
+            padding: 0.625rem 1rem;
+            background: none;
+            border: none;
+            text-align: left;
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            color: #374151;
+            border-radius: 8px;
+        }
+
+        .tile-menu-item:hover {
+            background: #f9fafb;
+        }
+
+        .tile-menu-delete {
+            color: #dc2626;
+        }
+
+        .tile-menu-delete:hover {
+            background: #fef2f2;
+        }
+
+        .delete-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .delete-overlay.open {
+            display: flex;
+        }
+
+        .delete-dialog {
+            background: white;
+            border-radius: 12px;
+            padding: 1.75rem 2rem;
+            max-width: 380px;
+            width: calc(100% - 2rem);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .delete-dialog-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .delete-dialog-body {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+
+        .delete-dialog-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .btn-delete-confirm {
+            padding: 0.45rem 1rem;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-delete-confirm:hover {
+            background: #b91c1c;
+        }
+
+        .btn-cancel-delete {
+            padding: 0.45rem 1rem;
+            background: white;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .btn-cancel-delete:hover {
+            background: #f9fafb;
+        }
     </style>
 </head>
 <body>
@@ -256,7 +403,20 @@
         <div class="project-grid" id="projectGrid"></div>
     </div>
 
+    <div class="delete-overlay" id="deleteOverlay">
+        <div class="delete-dialog">
+            <div class="delete-dialog-title">Delete project?</div>
+            <p class="delete-dialog-body">"<span id="deleteProjectName"></span>" will be deleted. This cannot be easily undone.</p>
+            <div class="delete-dialog-actions">
+                <button class="btn-cancel-delete" id="btnCancelDelete">Cancel</button>
+                <button class="btn-delete-confirm" id="btnConfirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
+        import { api } from './js/api.js';
+
         async function loadProjects() {
             const grid = document.getElementById('projectGrid');
             try {
@@ -266,11 +426,17 @@
                     return;
                 }
                 grid.innerHTML = projects.map(p => `
-                    <a href="project.html?id=${p.id}" class="project-tile">
-                        <div class="project-tile-icon">📈</div>
-                        <div class="project-tile-name">${escapeHtml(p.name)}</div>
-                        <p class="project-tile-desc">${escapeHtml(p.description || 'Revenue forecast project')}</p>
-                    </a>
+                    <div class="project-tile-wrapper" data-id="${p.id}">
+                        <a href="project.html?id=${p.id}" class="project-tile">
+                            <div class="project-tile-icon">📈</div>
+                            <div class="project-tile-name">${escapeHtml(p.name)}</div>
+                            <p class="project-tile-desc">${escapeHtml(p.description || 'Revenue forecast project')}</p>
+                        </a>
+                        <button class="tile-menu-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" aria-label="Project options">⋮</button>
+                        <div class="tile-menu-dropdown">
+                            <button class="tile-menu-item tile-menu-delete" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Delete project</button>
+                        </div>
+                    </div>
                 `).join('');
             } catch (err) {
                 grid.innerHTML = '<p class="projects-empty">Failed to load projects.</p>';
@@ -281,7 +447,75 @@
             return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
-        const form     = document.getElementById('newProjectForm');
+        // Close all dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.tile-menu-btn') && !e.target.closest('.tile-menu-dropdown')) {
+                document.querySelectorAll('.tile-menu-dropdown.open').forEach(d => d.classList.remove('open'));
+            }
+        });
+
+        // Delegate clicks inside the project grid
+        document.getElementById('projectGrid').addEventListener('click', (e) => {
+            const menuBtn = e.target.closest('.tile-menu-btn');
+            if (menuBtn) {
+                e.preventDefault();
+                const wrapper = menuBtn.closest('.project-tile-wrapper');
+                const dropdown = wrapper.querySelector('.tile-menu-dropdown');
+                document.querySelectorAll('.tile-menu-dropdown.open').forEach(d => {
+                    if (d !== dropdown) d.classList.remove('open');
+                });
+                dropdown.classList.toggle('open');
+                return;
+            }
+
+            const deleteBtn = e.target.closest('.tile-menu-delete');
+            if (deleteBtn) {
+                e.preventDefault();
+                deleteBtn.closest('.tile-menu-dropdown').classList.remove('open');
+                showDeleteConfirm(deleteBtn.dataset.id, deleteBtn.dataset.name);
+            }
+        });
+
+        // Delete confirmation modal
+        let pendingDeleteId = null;
+
+        function showDeleteConfirm(id, name) {
+            pendingDeleteId = id;
+            document.getElementById('deleteProjectName').textContent = name;
+            document.getElementById('deleteOverlay').classList.add('open');
+        }
+
+        document.getElementById('btnCancelDelete').addEventListener('click', () => {
+            pendingDeleteId = null;
+            document.getElementById('deleteOverlay').classList.remove('open');
+        });
+
+        document.getElementById('deleteOverlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                pendingDeleteId = null;
+                document.getElementById('deleteOverlay').classList.remove('open');
+            }
+        });
+
+        document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
+            if (!pendingDeleteId) return;
+            const id = pendingDeleteId;
+            pendingDeleteId = null;
+            document.getElementById('deleteOverlay').classList.remove('open');
+            try {
+                await api.deleteProject(id);
+                const wrapper = document.querySelector(`.project-tile-wrapper[data-id="${id}"]`);
+                if (wrapper) wrapper.remove();
+                const grid = document.getElementById('projectGrid');
+                if (!grid.querySelector('.project-tile-wrapper')) {
+                    grid.innerHTML = '<p class="projects-empty">No projects yet. Create one to get started.</p>';
+                }
+            } catch (err) {
+                alert('Failed to delete project.');
+            }
+        });
+
+        const form      = document.getElementById('newProjectForm');
         const nameInput = document.getElementById('newProjectName');
 
         document.getElementById('btnNewProject').addEventListener('click', () => {
