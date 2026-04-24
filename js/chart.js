@@ -25,7 +25,8 @@ export function buildChartData(consultantsData, budgetValue) {
     const labels = weeks.map(week => {
         const match = week.match(/(\d{4})-(\d{2})-W(\d+)/);
         if (!match) return week;
-        return `${monthNames[parseInt(match[2]) - 1]} W${match[3]}`;
+        const day = (parseInt(match[3]) - 1) * 7 + 1;
+        return `${monthNames[parseInt(match[2]) - 1]} ${day}`;
     });
 
     const weeklyRevenue = weeks.map(week =>
@@ -161,7 +162,6 @@ export function renderChart() {
 // problem that occurs when the chart container is display:none on the page.
 export function buildChartImageForExport(consultantsData, budgetValue) {
     const { labels, actualsData, forecastData, budgetData } = buildChartData(consultantsData, budgetValue);
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
     const datasets = [
         {

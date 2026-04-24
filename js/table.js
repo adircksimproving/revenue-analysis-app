@@ -59,8 +59,12 @@ export function renderTable(consultants, weeks) {
     headerHTML += '<th class="actual-col">Amount Billed to Date</th>';
     headerHTML += '<th class="forecast-col">Forecast Hours</th>';
 
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     weeks.forEach(week => {
-        const display = week.split('-W')[1] ? `W${week.split('-W')[1]}` : week.substring(5);
+        const match = week.match(/(\d{4})-(\d{2})-W(\d+)/);
+        const display = match
+            ? `${monthNames[parseInt(match[2]) - 1]} ${(parseInt(match[3]) - 1) * 7 + 1}`
+            : week.substring(5);
         headerHTML += `<th class="week-header">${display}</th>`;
     });
 
