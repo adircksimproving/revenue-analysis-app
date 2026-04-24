@@ -15,11 +15,11 @@ function processFile(file) {
     clearError();
     const reader = new FileReader();
 
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const csv = e.target.result;
             const data = parseCSV(csv);
-            const success = renderData(data);
+            const success = await renderData(data);
             if (!success) {
                 showError('No valid consultant data found in CSV. Expected columns: Worker, Rate to Bill, Hours To Bill, Transaction Date');
             }
