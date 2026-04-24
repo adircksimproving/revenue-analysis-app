@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — Revenue Forecast</title>
     <link rel="stylesheet" href="styles/layout.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Khula:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             display: flex;
@@ -25,13 +26,18 @@
         }
 
         .login-logo {
-            font-size: 36px;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .login-logo img {
+            height: 52px;
+            width: auto;
         }
 
         .login-title {
-            font-size: 22px;
-            font-weight: 700;
+            font-family: 'Poppins', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
             color: #1a1a1a;
             margin-bottom: 0.25rem;
         }
@@ -67,8 +73,8 @@
         }
 
         .field input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+            border-color: #005596;
+            box-shadow: 0 0 0 3px rgba(0,85,150,0.1);
         }
 
         .field input.invalid {
@@ -89,7 +95,7 @@
         .btn-login {
             width: 100%;
             padding: 0.7rem;
-            background: #3b82f6;
+            background: #005596;
             color: white;
             border: none;
             border-radius: 8px;
@@ -102,13 +108,15 @@
         }
 
         .btn-login:hover {
-            background: #2563eb;
+            background: #004a80;
         }
     </style>
 </head>
 <body>
     <div class="login-card">
-        <div class="login-logo">📊</div>
+        <div class="login-logo">
+            <img src="assets/improving-logo-full.png" alt="Improving">
+        </div>
         <div class="login-title">Revenue Forecast</div>
         <p class="login-subtitle">Sign in to continue</p>
 
