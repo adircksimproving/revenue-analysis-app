@@ -22,6 +22,9 @@ function processFile(file) {
             const success = await renderData(data);
             if (!success) {
                 showError('No valid consultant data found in CSV. Expected columns: Worker, Rate to Bill, Hours To Bill, Transaction Date');
+            } else {
+                const btn = document.getElementById('btnExportPDF');
+                if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
             }
         } catch (error) {
             showError(`Error processing file: ${error.message}`);

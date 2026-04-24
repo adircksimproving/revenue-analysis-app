@@ -4,8 +4,6 @@ import { updateQuarterDisplay } from './table.js';
 import { updateFinancialSummary } from './metrics.js';
 import { api } from './api.js';
 
-// Pure function: CSV rows → consultant objects array.
-// No side effects — safe to call from tests or the server.
 export function processCSVRows(rows) {
     const map = {};
 
@@ -52,8 +50,8 @@ export function processCSVRows(rows) {
         .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// Loads a project response from the API into state and re-renders the page.
 export function populateFromProject(project) {
+    state.projectName = project.name ?? '';
     state.budgetValue = project.budgetValue ?? 0;
 
     state.consultantsData = project.consultants.map(c => ({
@@ -67,8 +65,10 @@ export function populateFromProject(project) {
 
     if (state.consultantsData.length === 0) return false;
 
-    const totalHours = state.consultantsData.reduce((s, c) => s + c.totalHours, 0);
-    const totalBilled = state.consultantsData.reduce((s, c) => s + c.billedTotal, 0);
+    const { totalHours, totalBilled } = state.consultantsData.reduce(
+        (acc, c) => ({ totalHours: acc.totalHours + c.totalHours, totalBilled: acc.totalBilled + c.billedTotal }),
+        { totalHours: 0, totalBilled: 0 }
+    );
 
     document.getElementById('metricConsultants').textContent = state.consultantsData.length;
     document.getElementById('metricHours').textContent = Math.round(totalHours).toLocaleString();
@@ -84,7 +84,6 @@ export function populateFromProject(project) {
     return true;
 }
 
-// Called after a CSV file is parsed. Sends data to the API to merge, then renders.
 export async function renderData(data) {
     const consultants = processCSVRows(data.rows);
     if (consultants.length === 0) return false;
