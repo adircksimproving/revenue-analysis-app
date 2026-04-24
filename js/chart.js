@@ -18,10 +18,8 @@ export function computeChartWeeks(consultantsData) {
     return [...past, ...future];
 }
 
-export function renderChart() {
-    if (state.consultantsData.length === 0) return;
-
-    const weeks = computeChartWeeks(state.consultantsData);
+export function buildChartData(consultantsData, budgetValue) {
+    const weeks = computeChartWeeks(consultantsData);
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
     const labels = weeks.map(week => {
@@ -31,7 +29,7 @@ export function renderChart() {
     });
 
     const weeklyRevenue = weeks.map(week =>
-        state.consultantsData.reduce((sum, c) => sum + (c.weeklyHours[week] || 0) * c.rate, 0)
+        consultantsData.reduce((sum, c) => sum + (c.weeklyHours[week] || 0) * c.rate, 0)
     );
 
     let cumulative = 0;
@@ -63,7 +61,15 @@ export function renderChart() {
         }
     });
 
-    const budgetData = state.budgetValue > 0 ? weeks.map(() => state.budgetValue) : [];
+    const budgetData = budgetValue > 0 ? weeks.map(() => budgetValue) : [];
+
+    return { weeks, labels, actualsData, forecastData, budgetData };
+}
+
+export function renderChart() {
+    if (state.consultantsData.length === 0) return;
+
+    const { labels, actualsData, forecastData, budgetData } = buildChartData(state.consultantsData, state.budgetValue);
 
     const datasets = [
         {
@@ -148,4 +154,82 @@ export function renderChart() {
         const ctx = document.getElementById('revenueChart').getContext('2d');
         revenueChart = new Chart(ctx, chartConfig);
     }
+}
+
+// Returns a base64 PNG of the chart rendered to an off-screen canvas at a fixed
+// size. Using an off-screen canvas with responsive:false avoids the 0×0 dimension
+// problem that occurs when the chart container is display:none on the page.
+export function buildChartImageForExport(consultantsData, budgetValue) {
+    const { labels, actualsData, forecastData, budgetData } = buildChartData(consultantsData, budgetValue);
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    const datasets = [
+        {
+            label: 'Actuals',
+            data: actualsData,
+            borderColor: '#059669',
+            backgroundColor: 'rgba(5,150,105,0.08)',
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointBackgroundColor: '#059669',
+            tension: 0.3,
+            fill: false,
+            spanGaps: false,
+        },
+        {
+            label: 'Forecast',
+            data: forecastData,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.08)',
+            borderWidth: 2.5,
+            borderDash: [6, 4],
+            pointRadius: 3,
+            pointBackgroundColor: '#3b82f6',
+            tension: 0.3,
+            fill: false,
+            spanGaps: false,
+        },
+    ];
+
+    if (budgetValue > 0) {
+        datasets.push({
+            label: 'Budget',
+            data: budgetData,
+            borderColor: '#9ca3af',
+            borderWidth: 1.5,
+            borderDash: [4, 4],
+            pointRadius: 0,
+            tension: 0,
+            fill: false,
+        });
+    }
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = 800;
+    offscreen.height = 400;
+
+    const tempChart = new Chart(offscreen.getContext('2d'), {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: false,
+            animation: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { usePointStyle: true, padding: 20, font: { size: 13 } } },
+                tooltip: { enabled: false },
+            },
+            scales: {
+                x: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 12 } } },
+                y: {
+                    grid: { color: '#f3f4f6' },
+                    ticks: { font: { size: 12 }, callback: v => '$' + Math.round(v).toLocaleString() },
+                },
+            },
+        },
+    });
+
+    const img = tempChart.toBase64Image('image/png', 1.0);
+    tempChart.destroy();
+    return img;
 }

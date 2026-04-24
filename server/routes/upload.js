@@ -22,16 +22,11 @@ export function mergeConsultants(database, projectId, incoming) {
             hours = hours + excluded.hours
     `);
 
-    const getConsultant = database.prepare(
-        'SELECT id FROM consultants WHERE project_id = ? AND name = ?'
-    );
-
     const runMerge = database.transaction(() => {
         for (const c of incoming) {
-            upsertConsultant.run(projectId, c.name, c.rate ?? 0, c.billedTotal ?? 0);
-            const { id } = getConsultant.get(projectId, c.name);
+            const { lastInsertRowid } = upsertConsultant.run(projectId, c.name, c.rate ?? 0, c.billedTotal ?? 0);
             for (const [weekKey, hours] of Object.entries(c.weeklyHours ?? {})) {
-                if (hours > 0) upsertHours.run(id, weekKey, hours);
+                if (hours > 0) upsertHours.run(lastInsertRowid, weekKey, hours);
             }
         }
     });

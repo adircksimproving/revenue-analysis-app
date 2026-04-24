@@ -1,14 +1,11 @@
-// Returns a fully-hydrated project object (with nested consultants + weeklyHours),
-// or null if not found.
 export function loadProject(db, id) {
     const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id);
     if (!project) return null;
 
     const rows = db.prepare('SELECT * FROM consultants WHERE project_id = ?').all(project.id);
+    const getHours = db.prepare('SELECT week_key, hours FROM weekly_hours WHERE consultant_id = ?');
     const consultants = rows.map(c => {
-        const hours = db.prepare(
-            'SELECT week_key, hours FROM weekly_hours WHERE consultant_id = ?'
-        ).all(c.id);
+        const hours = getHours.all(c.id);
         const weeklyHours = Object.fromEntries(hours.map(h => [h.week_key, h.hours]));
         return {
             id: c.id,

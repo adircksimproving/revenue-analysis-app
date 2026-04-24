@@ -5,12 +5,21 @@ import { initUpload } from './upload.js';
 import { openForecastModal, initModal } from './modal.js';
 import { api } from './api.js';
 import { populateFromProject } from './data-processor.js';
+import { generateProjectPDF } from './pdf-export.js';
 
 setCurrentQuarter();
 initUpload();
 initModal();
 
-// Read project ID from URL (?id=123) and load persisted data
+let budgetSaveTimer = null;
+function saveBudgetDebounced() {
+    clearTimeout(budgetSaveTimer);
+    budgetSaveTimer = setTimeout(() => {
+        api.updateProject(state.projectId, { budgetValue: state.budgetValue })
+            .catch(err => console.error('Failed to save budget:', err));
+    }, 400);
+}
+
 const projectId = new URLSearchParams(location.search).get('id');
 if (!projectId) {
     location.href = 'home.html';
@@ -18,7 +27,10 @@ if (!projectId) {
     state.projectId = parseInt(projectId, 10);
     api.getProject(state.projectId)
         .then(project => {
-            if (project.consultants.length > 0) populateFromProject(project);
+            if (project.consultants.length > 0) {
+                populateFromProject(project);
+                enableExportButton();
+            }
         })
         .catch(err => console.error('Failed to load project:', err));
 }
@@ -26,10 +38,7 @@ if (!projectId) {
 document.getElementById('inputBudget').addEventListener('input', (e) => {
     state.budgetValue = parseFloat(e.target.value) || 0;
     updateFinancialSummary();
-    if (state.projectId) {
-        api.updateProject(state.projectId, { budgetValue: state.budgetValue })
-            .catch(err => console.error('Failed to save budget:', err));
-    }
+    if (state.projectId) saveBudgetDebounced();
 });
 
 let chartVisible = false;
@@ -42,6 +51,18 @@ document.getElementById('forecastToggleTile').addEventListener('click', () => {
     chartContainer.style.display = chartVisible ? 'block' : 'none';
     icon.textContent = chartVisible ? '▲ chart' : '▼ chart';
     tile.classList.toggle('chart-active', chartVisible);
+});
+
+function enableExportButton() {
+    const btn = document.getElementById('btnExportPDF');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+}
+
+document.getElementById('btnExportPDF').addEventListener('click', () => {
+    generateProjectPDF(state.projectName || 'Project', state)
+        .catch(err => console.error('PDF export failed:', err));
 });
 
 // Required: openForecastModal is called from inline onclick attributes in table rows
