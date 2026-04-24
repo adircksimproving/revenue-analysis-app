@@ -44,7 +44,7 @@ th.actual-col {
 }
 
 th.forecast-col {
-    background: #eff6ff;
+    background: rgba(0,85,150,0.07);
     color: #1e40af;
 }
 
@@ -83,7 +83,7 @@ td.week-cell.empty {
 
 .week-input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: #005596;
     background: white;
 }
 
@@ -99,7 +99,7 @@ td.week-cell.empty {
 
 .forecast-input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: #005596;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -122,13 +122,13 @@ tr:hover {
 }
 
 .forecast {
-    color: #3b82f6;
+    color: #005596;
     font-weight: 600;
     font-size: 15px;
 }
 
 .quarter-header {
-    background: #eff6ff;
+    background: rgba(0,85,150,0.07);
     padding: 0.75rem 1rem;
     font-weight: 600;
     color: #1e40af;
@@ -136,7 +136,7 @@ tr:hover {
 }
 
 .quarter-nav-cell {
-    background: #eff6ff;
+    background: rgba(0,85,150,0.07);
     padding: 0.75rem 1rem;
     border-bottom: 2px solid #bfdbfe;
 }
@@ -174,7 +174,7 @@ tr:hover {
 
 .forecast-btn {
     padding: 0.35rem 0.85rem;
-    background: #eff6ff;
+    background: rgba(0,85,150,0.07);
     border: 1px solid #bfdbfe;
     border-radius: 6px;
     color: #1e40af;
@@ -186,6 +186,6 @@ tr:hover {
 }
 
 .forecast-btn:hover {
-    background: #dbeafe;
+    background: rgba(0,85,150,0.12);
     border-color: #93c5fd;
 }

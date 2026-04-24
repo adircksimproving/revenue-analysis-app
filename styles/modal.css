@@ -54,8 +54,8 @@
 }
 
 .modal-input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    border-color: #005596;
+    box-shadow: 0 0 0 3px rgba(0,85,150,0.1);
 }
 
 .modal-actions {
@@ -81,7 +81,7 @@
     padding: 0.5rem 1.25rem;
     border: none;
     border-radius: 6px;
-    background: #3b82f6;
+    background: #005596;
     color: white;
     cursor: pointer;
     font-size: 14px;
@@ -89,4 +89,4 @@
     font-family: inherit;
 }
 
-.btn-apply:hover { background: #2563eb; }
+.btn-apply:hover { background: #004a80; }

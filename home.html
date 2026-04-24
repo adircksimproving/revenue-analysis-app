@@ -6,6 +6,7 @@
     <title>Home — Revenue Forecast</title>
     <link rel="stylesheet" href="styles/layout.css">
     <link rel="stylesheet" href="styles/account.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Khula:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         .nav {
             display: flex;
@@ -17,14 +18,25 @@
         .nav-brand {
             display: flex;
             align-items: center;
-            gap: 0.6rem;
-            font-size: 17px;
-            font-weight: 700;
-            color: #1a1a1a;
+            gap: 0.75rem;
         }
 
-        .nav-brand-icon {
-            font-size: 22px;
+        .nav-brand-logo {
+            height: 28px;
+            width: auto;
+        }
+
+        .nav-brand-sep {
+            width: 1px;
+            height: 20px;
+            background: #d1d5db;
+        }
+
+        .nav-brand-app {
+            font-family: 'Poppins', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
         }
 
         .btn-signout {
@@ -50,6 +62,7 @@
         }
 
         .welcome-title {
+            font-family: 'Poppins', sans-serif;
             font-size: 26px;
             font-weight: 700;
             color: #1a1a1a;
@@ -78,7 +91,7 @@
 
         .btn-new-project {
             padding: 0.4rem 0.875rem;
-            background: #3b82f6;
+            background: #005596;
             color: white;
             border: none;
             border-radius: 6px;
@@ -90,7 +103,7 @@
         }
 
         .btn-new-project:hover {
-            background: #2563eb;
+            background: #004a80;
         }
 
         .new-project-form {
@@ -120,8 +133,8 @@
         }
 
         .new-project-form input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+            border-color: #005596;
+            box-shadow: 0 0 0 3px rgba(0,85,150,0.1);
         }
 
         .new-project-form-actions {
@@ -131,7 +144,7 @@
 
         .btn-create {
             padding: 0.45rem 1rem;
-            background: #3b82f6;
+            background: #005596;
             color: white;
             border: none;
             border-radius: 6px;
@@ -142,7 +155,7 @@
             transition: background 0.15s;
         }
 
-        .btn-create:hover { background: #2563eb; }
+        .btn-create:hover { background: #004a80; }
 
         .btn-cancel-form {
             padding: 0.45rem 1rem;
@@ -176,8 +189,8 @@
         }
 
         .project-tile:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 4px 16px rgba(59,130,246,0.1);
+            border-color: #005596;
+            box-shadow: 0 4px 16px rgba(0,85,150,0.1);
         }
 
         .project-tile-icon {
@@ -209,8 +222,9 @@
     <div class="container">
         <nav class="nav">
             <div class="nav-brand">
-                <span class="nav-brand-icon">📊</span>
-                Revenue Forecast
+                <img src="assets/improving-logo-simple.png" alt="Improving" class="nav-brand-logo">
+                <span class="nav-brand-sep"></span>
+                <span class="nav-brand-app">Revenue Forecast</span>
             </div>
             <div class="nav-right">
                 <a href="account.html" class="btn-user">

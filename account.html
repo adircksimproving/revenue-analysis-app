@@ -6,6 +6,7 @@
     <title>Account — Revenue Forecast</title>
     <link rel="stylesheet" href="styles/layout.css">
     <link rel="stylesheet" href="styles/account.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Khula:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         .nav {
             display: flex;
@@ -17,15 +18,26 @@
         .nav-brand {
             display: flex;
             align-items: center;
-            gap: 0.6rem;
-            font-size: 17px;
-            font-weight: 700;
-            color: #1a1a1a;
+            gap: 0.75rem;
             text-decoration: none;
         }
 
-        .nav-brand-icon {
-            font-size: 22px;
+        .nav-brand-logo {
+            height: 28px;
+            width: auto;
+        }
+
+        .nav-brand-sep {
+            width: 1px;
+            height: 20px;
+            background: #d1d5db;
+        }
+
+        .nav-brand-app {
+            font-family: 'Poppins', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
         }
 
         .btn-signout {
@@ -51,8 +63,9 @@
     <div class="container">
         <nav class="nav">
             <a href="home.html" class="nav-brand">
-                <span class="nav-brand-icon">📊</span>
-                Revenue Forecast
+                <img src="assets/improving-logo-simple.png" alt="Improving" class="nav-brand-logo">
+                <span class="nav-brand-sep"></span>
+                <span class="nav-brand-app">Revenue Forecast</span>
             </a>
             <div class="nav-right">
                 <a href="index.html" class="btn-signout">Sign out</a>

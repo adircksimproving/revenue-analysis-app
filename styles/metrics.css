@@ -47,20 +47,20 @@
 }
 
 .financial-card.forecast {
-    border: 2px dashed #3b82f6;
-    background: #eff6ff;
+    border: 2px dashed #005596;
+    background: rgba(0,85,150,0.07);
     cursor: pointer;
     user-select: none;
     transition: background 0.15s;
 }
 
 .financial-card.forecast:hover {
-    background: #dbeafe;
+    background: rgba(0,85,150,0.12);
 }
 
 .financial-card.forecast.chart-active {
     border-style: solid;
-    background: #dbeafe;
+    background: rgba(0,85,150,0.12);
 }
 
 .financial-card.variance {
@@ -90,7 +90,7 @@
 }
 
 .financial-input:focus {
-    border-bottom-color: #3b82f6;
+    border-bottom-color: #005596;
 }
 
 .financial-input::placeholder {
