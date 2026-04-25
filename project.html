@@ -28,12 +28,12 @@
                 <a href="index.html" class="btn-signout" style="padding:0.4rem 1rem; border:1px solid #e5e7eb; border-radius:6px; background:white; font-size:13px; font-weight:500; color:#6b7280; text-decoration:none;">Sign out</a>
             </div>
         </div>
-        <h1>Project Revenue Forecast</h1>
-        <p class="subtitle">Upload Workday timecard CSV to analyze consultant hours and revenue</p>
+        <h1 id="projectHeading">Project Revenue Forecast</h1>
+        <p class="subtitle">Upload Workday 'Find Billable Transactions' report to analyze consultant hours and revenue</p>
 
         <div class="upload-zone" id="uploadZone">
             <div class="upload-icon">📊</div>
-            <div class="upload-text">Drop your Workday CSV here</div>
+            <div class="upload-text">Upload your csv here</div>
             <div class="upload-hint">or click to browse files</div>
             <input type="file" id="fileInput" class="file-input" accept=".csv">
         </div>
@@ -57,7 +57,7 @@
 
         <div id="financialSummary" class="financial-summary" style="display: none;">
             <div class="financial-card">
-                <div class="financial-label">Budget</div>
+                <div class="financial-label budget-label">Budget <i class="budget-tooltip-icon" data-tooltip="Input budget from the project SOW.">?</i></div>
                 <input type="number" class="financial-input" id="inputBudget" placeholder="$0" min="0" />
             </div>
             <div class="financial-card actuals">

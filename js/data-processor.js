@@ -54,6 +54,11 @@ export function populateFromProject(project) {
     state.projectName = project.name ?? '';
     state.budgetValue = project.budgetValue ?? 0;
 
+    const heading = document.getElementById('projectHeading');
+    if (heading && project.clientName) {
+        heading.textContent = `Project Revenue Forecast | ${project.clientName}`;
+    }
+
     state.consultantsData = project.consultants.map(c => ({
         ...c,
         totalHours: Object.values(c.weeklyHours).reduce((s, h) => s + h, 0),
