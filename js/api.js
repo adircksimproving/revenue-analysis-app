@@ -14,13 +14,14 @@ async function request(method, path, body) {
 }
 
 export const api = {
-    getProjects:   ()               => request('GET',    '/projects'),
-    createProject: (name, desc)     => request('POST',   '/projects',        { name, description: desc }),
-    getProject:    (id)             => request('GET',    `/projects/${id}`),
-    updateProject: (id, data)       => request('PUT',    `/projects/${id}`,  data),
-    deleteProject: (id)             => request('DELETE', `/projects/${id}`),
-    restoreProject:(id)             => request('POST',   `/projects/${id}/restore`),
-    uploadCSV:     (id, consultants)=> request('POST',   `/projects/${id}/upload`, { consultants }),
+    getClients:    ()                        => request('GET',    '/clients'),
+    getProjects:   ()                        => request('GET',    '/projects'),
+    createProject: (name, clientName, desc)  => request('POST',   '/projects',        { name, clientName, description: desc }),
+    getProject:    (id)                      => request('GET',    `/projects/${id}`),
+    updateProject: (id, data)                => request('PUT',    `/projects/${id}`,  data),
+    deleteProject: (id)                      => request('DELETE', `/projects/${id}`),
+    restoreProject:(id)                      => request('POST',   `/projects/${id}/restore`),
+    uploadCSV:     (id, consultants)         => request('POST',   `/projects/${id}/upload`, { consultants }),
     updateForecast:(id, forecastHoursPerWeek, weeklyHours) =>
-                                       request('PUT',    `/consultants/${id}/forecast`, { forecastHoursPerWeek, weeklyHours }),
+                                               request('PUT',    `/consultants/${id}/forecast`, { forecastHoursPerWeek, weeklyHours }),
 };

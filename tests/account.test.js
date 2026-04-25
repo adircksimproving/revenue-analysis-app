@@ -56,17 +56,24 @@ describe('account.html — mock user profile', () => {
 describe('account.html — programs and projects', () => {
     beforeAll(() => loadPage('account.html'));
 
-    it('lists at least one program', () => {
-        expect(document.querySelectorAll('.program-item').length).toBeGreaterThanOrEqual(1);
+    it('has a clients list container', () => {
+        expect(document.querySelector('#clientsList')).not.toBeNull();
     });
 
-    it('each program has a name', () => {
+    it('clients list container is inside the Programs & Clients section', () => {
+        const card = document.querySelector('#clientsList').closest('.account-card');
+        expect(card).not.toBeNull();
+    });
+
+    it('each rendered program has a name', () => {
+        // Programs are loaded dynamically; verify structure when present
         document.querySelectorAll('.program-item').forEach(program => {
             expect(program.querySelector('.program-name').textContent.trim().length).toBeGreaterThan(0);
         });
     });
 
-    it('each program has at least one child project', () => {
+    it('each rendered program has at least one child project', () => {
+        // Programs are loaded dynamically; verify structure when present
         document.querySelectorAll('.program-item').forEach(program => {
             expect(program.querySelectorAll('.project-item').length).toBeGreaterThanOrEqual(1);
         });
