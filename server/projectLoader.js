@@ -1,5 +1,7 @@
 export function loadProject(db, id) {
-    const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id);
+    const project = db.prepare(
+        'SELECT p.*, c.name AS client_name FROM projects p LEFT JOIN clients c ON c.id = p.client_id WHERE p.id = ?'
+    ).get(id);
     if (!project) return null;
 
     const rows = db.prepare('SELECT * FROM consultants WHERE project_id = ?').all(project.id);
@@ -22,6 +24,8 @@ export function loadProject(db, id) {
         name: project.name,
         description: project.description,
         budgetValue: project.budget_value,
+        clientId: project.client_id,
+        clientName: project.client_name,
         deletedAt: project.deleted_at,
         createdAt: project.created_at,
         consultants,

@@ -7,26 +7,34 @@ const router = Router();
 // List all active projects for the hardcoded user
 router.get('/', (req, res) => {
     const projects = db.prepare(
-        'SELECT * FROM projects WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
+        `SELECT p.*, c.name AS client_name
+         FROM projects p
+         LEFT JOIN clients c ON c.id = p.client_id
+         WHERE p.user_id = ? AND p.deleted_at IS NULL
+         ORDER BY c.name ASC, p.created_at DESC`
     ).all(USER_ID);
     res.json(projects.map(p => ({
         id: p.id,
         name: p.name,
         description: p.description,
         budgetValue: p.budget_value,
+        clientId: p.client_id,
+        clientName: p.client_name,
         createdAt: p.created_at,
     })));
 });
 
 // Create a new project
 router.post('/', (req, res) => {
-    const { name, description = '' } = req.body;
-    if (!name || !name.trim()) {
-        return res.status(400).json({ error: 'Project name is required' });
+    const { name, description = '', clientName } = req.body;
+    if (!name?.trim() || !clientName?.trim()) {
+        return res.status(400).json({ error: 'Project name and client are required' });
     }
+    db.prepare('INSERT OR IGNORE INTO clients (user_id, name) VALUES (?, ?)').run(USER_ID, clientName.trim());
+    const client = db.prepare('SELECT id FROM clients WHERE user_id = ? AND name = ?').get(USER_ID, clientName.trim());
     const result = db.prepare(
-        'INSERT INTO projects (user_id, name, description) VALUES (?, ?, ?)'
-    ).run(USER_ID, name.trim(), description.trim());
+        'INSERT INTO projects (user_id, name, description, client_id) VALUES (?, ?, ?, ?)'
+    ).run(USER_ID, name.trim(), description.trim(), client.id);
     const project = loadProject(db, result.lastInsertRowid);
     res.status(201).json(project);
 });
@@ -47,9 +55,19 @@ router.put('/:id', (req, res) => {
     const description = req.body.description ?? project.description;
     const budgetValue = req.body.budgetValue  ?? project.budget_value;
 
+    let clientId = project.client_id;
+    if (req.body.clientName !== undefined) {
+        if (!req.body.clientName?.trim()) {
+            return res.status(400).json({ error: 'Client name is required' });
+        }
+        db.prepare('INSERT OR IGNORE INTO clients (user_id, name) VALUES (?, ?)').run(USER_ID, req.body.clientName.trim());
+        const client = db.prepare('SELECT id FROM clients WHERE user_id = ? AND name = ?').get(USER_ID, req.body.clientName.trim());
+        clientId = client.id;
+    }
+
     db.prepare(
-        `UPDATE projects SET name = ?, description = ?, budget_value = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(name, description, budgetValue, project.id);
+        `UPDATE projects SET name = ?, description = ?, budget_value = ?, client_id = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(name, description, budgetValue, clientId, project.id);
 
     res.json(loadProject(db, project.id));
 });

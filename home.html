@@ -363,6 +363,96 @@
         .btn-cancel-delete:hover {
             background: #f9fafb;
         }
+
+        .client-section {
+            margin-bottom: 1.75rem;
+        }
+
+        .client-section-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .project-tile-client {
+            font-size: 11px;
+            color: #9ca3af;
+            margin-top: 0.25rem;
+        }
+
+        .edit-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .edit-overlay.open {
+            display: flex;
+        }
+
+        .edit-dialog {
+            background: white;
+            border-radius: 12px;
+            padding: 1.75rem 2rem;
+            max-width: 420px;
+            width: calc(100% - 2rem);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .edit-dialog-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 1rem;
+        }
+
+        .edit-dialog input {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            margin-bottom: 0.75rem;
+            box-sizing: border-box;
+            transition: border-color 0.15s;
+        }
+
+        .edit-dialog input:focus {
+            border-color: #005596;
+            box-shadow: 0 0 0 3px rgba(0,85,150,0.1);
+        }
+
+        .edit-dialog-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            margin-top: 0.25rem;
+        }
+
+        .btn-save {
+            padding: 0.45rem 1rem;
+            background: #005596;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-save:hover { background: #004a80; }
     </style>
 </head>
 <body>
@@ -394,13 +484,28 @@
 
         <div class="new-project-form" id="newProjectForm">
             <input type="text" id="newProjectName" placeholder="Project name" maxlength="100" />
+            <input list="clientsDatalist" id="newProjectClient" placeholder="Client name" maxlength="100" autocomplete="off" />
+            <datalist id="clientsDatalist"></datalist>
             <div class="new-project-form-actions">
                 <button class="btn-create" id="btnCreate">Create</button>
                 <button class="btn-cancel-form" id="btnCancelForm">Cancel</button>
             </div>
         </div>
 
-        <div class="project-grid" id="projectGrid"></div>
+        <div id="projectGrid"></div>
+    </div>
+
+    <div class="edit-overlay" id="editOverlay">
+        <div class="edit-dialog">
+            <div class="edit-dialog-title">Edit project</div>
+            <input type="text" id="editProjectName" placeholder="Project name" maxlength="100" />
+            <input list="editClientsDatalist" id="editProjectClient" placeholder="Client name" maxlength="100" autocomplete="off" />
+            <datalist id="editClientsDatalist"></datalist>
+            <div class="edit-dialog-actions">
+                <button class="btn-cancel-delete" id="btnCancelEdit">Cancel</button>
+                <button class="btn-save" id="btnSaveEdit">Save</button>
+            </div>
+        </div>
     </div>
 
     <div class="delete-overlay" id="deleteOverlay">
@@ -417,25 +522,48 @@
     <script type="module">
         import { api } from './js/api.js';
 
+        function escapeHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function tileHtml(p) {
+            return `
+                <div class="project-tile-wrapper" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-client="${escapeHtml(p.clientName || '')}">
+                    <a href="project.html?id=${p.id}" class="project-tile">
+                        <div class="project-tile-icon">📈</div>
+                        <div class="project-tile-name">${escapeHtml(p.name)}</div>
+                        <p class="project-tile-desc">${escapeHtml(p.description || 'Revenue forecast project')}</p>
+                    </a>
+                    <button class="tile-menu-btn" data-id="${p.id}" aria-label="Project options">⋮</button>
+                    <div class="tile-menu-dropdown">
+                        <button class="tile-menu-item tile-menu-edit" data-id="${p.id}">Edit project</button>
+                        <button class="tile-menu-item tile-menu-delete" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Delete project</button>
+                    </div>
+                </div>
+            `;
+        }
+
         async function loadProjects() {
             const grid = document.getElementById('projectGrid');
             try {
-                const projects = await fetch('/api/projects').then(r => r.json());
+                const projects = await api.getProjects();
                 if (!Array.isArray(projects) || projects.length === 0) {
                     grid.innerHTML = '<p class="projects-empty">No projects yet. Create one to get started.</p>';
                     return;
                 }
-                grid.innerHTML = projects.map(p => `
-                    <div class="project-tile-wrapper" data-id="${p.id}">
-                        <a href="project.html?id=${p.id}" class="project-tile">
-                            <div class="project-tile-icon">📈</div>
-                            <div class="project-tile-name">${escapeHtml(p.name)}</div>
-                            <p class="project-tile-desc">${escapeHtml(p.description || 'Revenue forecast project')}</p>
-                        </a>
-                        <button class="tile-menu-btn" data-id="${p.id}" data-name="${escapeHtml(p.name)}" aria-label="Project options">⋮</button>
-                        <div class="tile-menu-dropdown">
-                            <button class="tile-menu-item tile-menu-delete" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Delete project</button>
-                        </div>
+
+                // Group by clientName, preserving server sort order (alphabetical by client)
+                const groups = new Map();
+                for (const p of projects) {
+                    const key = p.clientName || 'Unknown';
+                    if (!groups.has(key)) groups.set(key, []);
+                    groups.get(key).push(p);
+                }
+
+                grid.innerHTML = [...groups.entries()].map(([client, items]) => `
+                    <div class="client-section">
+                        <div class="client-section-header">${escapeHtml(client)}</div>
+                        <div class="project-grid">${items.map(tileHtml).join('')}</div>
                     </div>
                 `).join('');
             } catch (err) {
@@ -443,8 +571,12 @@
             }
         }
 
-        function escapeHtml(str) {
-            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        async function populateClientDatalist(datalistId) {
+            try {
+                const clients = await api.getClients();
+                const dl = document.getElementById(datalistId);
+                dl.innerHTML = clients.map(c => `<option value="${escapeHtml(c.name)}">`).join('');
+            } catch {}
         }
 
         // Close all dropdowns when clicking outside
@@ -468,11 +600,62 @@
                 return;
             }
 
+            const editBtn = e.target.closest('.tile-menu-edit');
+            if (editBtn) {
+                e.preventDefault();
+                editBtn.closest('.tile-menu-dropdown').classList.remove('open');
+                const wrapper = editBtn.closest('.project-tile-wrapper');
+                showEditModal(wrapper.dataset.id, wrapper.dataset.name, wrapper.dataset.client);
+                return;
+            }
+
             const deleteBtn = e.target.closest('.tile-menu-delete');
             if (deleteBtn) {
                 e.preventDefault();
                 deleteBtn.closest('.tile-menu-dropdown').classList.remove('open');
                 showDeleteConfirm(deleteBtn.dataset.id, deleteBtn.dataset.name);
+            }
+        });
+
+        // Edit modal
+        let pendingEditId = null;
+
+        function showEditModal(id, name, clientName) {
+            pendingEditId = id;
+            document.getElementById('editProjectName').value = name;
+            document.getElementById('editProjectClient').value = clientName;
+            populateClientDatalist('editClientsDatalist');
+            document.getElementById('editOverlay').classList.add('open');
+            document.getElementById('editProjectName').focus();
+        }
+
+        document.getElementById('btnCancelEdit').addEventListener('click', () => {
+            pendingEditId = null;
+            document.getElementById('editOverlay').classList.remove('open');
+        });
+
+        document.getElementById('editOverlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                pendingEditId = null;
+                document.getElementById('editOverlay').classList.remove('open');
+            }
+        });
+
+        document.getElementById('btnSaveEdit').addEventListener('click', async () => {
+            if (!pendingEditId) return;
+            const name = document.getElementById('editProjectName').value.trim();
+            const clientName = document.getElementById('editProjectClient').value.trim();
+            if (!name) { document.getElementById('editProjectName').focus(); return; }
+            if (!clientName) { document.getElementById('editProjectClient').focus(); return; }
+            const id = pendingEditId;
+            pendingEditId = null;
+            document.getElementById('editOverlay').classList.remove('open');
+            try {
+                await api.updateProject(id, { name, clientName });
+                await loadProjects();
+                populateClientDatalist('clientsDatalist');
+            } catch (err) {
+                alert('Failed to update project.');
             }
         });
 
@@ -504,19 +687,15 @@
             document.getElementById('deleteOverlay').classList.remove('open');
             try {
                 await api.deleteProject(id);
-                const wrapper = document.querySelector(`.project-tile-wrapper[data-id="${id}"]`);
-                if (wrapper) wrapper.remove();
-                const grid = document.getElementById('projectGrid');
-                if (!grid.querySelector('.project-tile-wrapper')) {
-                    grid.innerHTML = '<p class="projects-empty">No projects yet. Create one to get started.</p>';
-                }
+                await loadProjects();
             } catch (err) {
                 alert('Failed to delete project.');
             }
         });
 
-        const form      = document.getElementById('newProjectForm');
-        const nameInput = document.getElementById('newProjectName');
+        const form         = document.getElementById('newProjectForm');
+        const nameInput    = document.getElementById('newProjectName');
+        const clientInput  = document.getElementById('newProjectClient');
 
         document.getElementById('btnNewProject').addEventListener('click', () => {
             form.classList.add('visible');
@@ -526,20 +705,20 @@
         document.getElementById('btnCancelForm').addEventListener('click', () => {
             form.classList.remove('visible');
             nameInput.value = '';
+            clientInput.value = '';
         });
 
         document.getElementById('btnCreate').addEventListener('click', createProject);
         nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') createProject(); });
+        clientInput.addEventListener('keydown', e => { if (e.key === 'Enter') createProject(); });
 
         async function createProject() {
             const name = nameInput.value.trim();
+            const clientName = clientInput.value.trim();
             if (!name) { nameInput.focus(); return; }
+            if (!clientName) { clientInput.focus(); return; }
             try {
-                const project = await fetch('/api/projects', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name }),
-                }).then(r => r.json());
+                const project = await api.createProject(name, clientName);
                 location.href = `project.html?id=${project.id}`;
             } catch (err) {
                 alert('Failed to create project. Is the server running?');
@@ -547,6 +726,7 @@
         }
 
         loadProjects();
+        populateClientDatalist('clientsDatalist');
     </script>
 </body>
 </html>
