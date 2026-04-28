@@ -72,6 +72,25 @@
                 <div class="financial-label">Variance</div>
                 <div class="financial-value" id="summaryVariance">$0</div>
             </div>
+            <div class="financial-card burn-rate">
+                <div class="financial-label">Burn Rate</div>
+                <div class="financial-value" id="burnRateValue">$0</div>
+                <div class="burn-rate-controls">
+                    <select id="burnRateTimeframe" class="burn-rate-select">
+                        <option value="week">Next 7 days</option>
+                        <option value="biweekly">Next 14 days</option>
+                        <option value="month" selected>Next 30 days</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <div id="burnRateCustomRange" class="burn-rate-custom" hidden>
+                        <input type="date" id="burnRateStart" class="burn-rate-date-input" />
+                        <span class="burn-rate-dash">–</span>
+                        <input type="date" id="burnRateEnd" class="burn-rate-date-input" />
+                    </div>
+                </div>
+                <div class="burn-rate-period" id="burnRatePeriodLabel"></div>
+                <div class="burn-rate-pace" id="burnRatePace"></div>
+            </div>
         </div>
 
         <div id="chartContainer" class="chart-container" style="display: none;">

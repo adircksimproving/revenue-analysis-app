@@ -114,6 +114,19 @@ export function isWeekOnOrAfterProjectStart(weekKey) {
     return weekEnd >= new Date(state.startDate);
 }
 
+export function parseLocalDate(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+export function snapToMonday(date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay(); // 0=Sun, 1=Mon..6=Sat
+    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+    return d;
+}
+
 export function groupWeeksByQuarter(weeks) {
     const quarters = {};
 
