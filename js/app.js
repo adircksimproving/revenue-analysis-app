@@ -84,7 +84,11 @@ document.getElementById('burnRateTimeframe').addEventListener('change', (e) => {
 
 document.getElementById('burnRateStart').addEventListener('change', (e) => {
     if (e.target.value) {
-        const monday = snapToMonday(parseLocalDate(e.target.value));
+        let monday = snapToMonday(parseLocalDate(e.target.value));
+        if (e.target.min) {
+            const minMonday = snapToMonday(parseLocalDate(e.target.min));
+            if (monday < minMonday) monday = minMonday;
+        }
         e.target.value = formatDateISO(monday);
     }
     state.burnRateCustomStart = e.target.value;
@@ -93,7 +97,11 @@ document.getElementById('burnRateStart').addEventListener('change', (e) => {
 
 document.getElementById('burnRateEnd').addEventListener('change', (e) => {
     if (e.target.value) {
-        const monday = snapToMonday(parseLocalDate(e.target.value));
+        let monday = snapToMonday(parseLocalDate(e.target.value));
+        if (e.target.min) {
+            const minMonday = snapToMonday(parseLocalDate(e.target.min));
+            if (monday < minMonday) monday = minMonday;
+        }
         const sunday = new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000);
         e.target.value = formatDateISO(sunday);
     }
