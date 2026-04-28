@@ -7,6 +7,10 @@ export function showError(message) {
     errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
 }
 
+export function showWarning(message) {
+    errorContainer.innerHTML = `<div class="warning-message">${message}</div>`;
+}
+
 export function clearError() {
     errorContainer.innerHTML = '';
 }
@@ -19,10 +23,13 @@ function processFile(file) {
         try {
             const csv = e.target.result;
             const data = parseCSV(csv);
-            const success = await renderData(data);
+            const { success, skippedDateRows } = await renderData(data);
             if (!success) {
                 showError('No valid consultant data found in CSV. Expected columns: Worker, Rate to Bill, Hours To Bill, Transaction Date');
             } else {
+                if (skippedDateRows > 0) {
+                    showWarning(`${skippedDateRows} row${skippedDateRows !== 1 ? 's' : ''} were skipped — transaction dates fall outside the project date range.`);
+                }
                 const btn = document.getElementById('btnExportPDF');
                 if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
             }

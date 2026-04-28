@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('../js/table.js',   () => ({ updateQuarterDisplay: vi.fn() }));
 vi.mock('../js/metrics.js', () => ({ updateFinancialSummary: vi.fn() }));
 vi.mock('../js/chart.js',   () => ({ renderChart: vi.fn() }));
-vi.mock('../js/api.js',     () => ({ api: { uploadCSV: vi.fn(), updateProject: vi.fn() } }));
+vi.mock('../js/api.js',     () => ({ api: { uploadCSV: vi.fn(), updateProject: vi.fn().mockResolvedValue({}) } }));
 
 import { processCSVRows, populateFromProject } from '../js/data-processor.js';
 import { state } from '../js/state.js';
@@ -43,22 +43,29 @@ beforeEach(() => {
     state.budgetValue = 0;
     state.actualsValue = 0;
     state.projectId = 1;
+    state.startDate = null;
+    state.endDate = null;
 });
 
 // ── processCSVRows — validation ───────────────────────────────────────────────
 
 describe('processCSVRows — validation', () => {
-    it('returns an empty array when no rows produce valid consultants', () => {
-        expect(processCSVRows(makeRows([{ Worker: 'Unknown', 'Hours To Bill': '0' }]))).toEqual([]);
+    it('returns empty consultants when no rows produce valid consultants', () => {
+        expect(processCSVRows(makeRows([{ Worker: 'Unknown', 'Hours To Bill': '0' }])).consultants).toEqual([]);
     });
 
-    it('returns an empty array for an empty row set', () => {
-        expect(processCSVRows([])).toEqual([]);
+    it('returns empty consultants for an empty row set', () => {
+        expect(processCSVRows([]).consultants).toEqual([]);
     });
 
-    it('returns a non-empty array when at least one valid consultant is found', () => {
-        const result = processCSVRows(makeRows([{ Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' }]));
-        expect(result.length).toBe(1);
+    it('returns a non-empty consultants array when at least one valid consultant is found', () => {
+        const { consultants } = processCSVRows(makeRows([{ Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' }]));
+        expect(consultants.length).toBe(1);
+    });
+
+    it('returns skippedDateRows of 0 when no project dates are set', () => {
+        const rows = makeRows([{ Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' }]);
+        expect(processCSVRows(rows).skippedDateRows).toBe(0);
     });
 });
 
@@ -70,7 +77,7 @@ describe('processCSVRows — consultant aggregation', () => {
             { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8',  'Transaction Date': '4/1/2026' },
             { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '16', 'Transaction Date': '4/8/2026' },
         ]);
-        const [alice] = processCSVRows(rows);
+        const { consultants: [alice] } = processCSVRows(rows);
         expect(Object.values(alice.weeklyHours).reduce((s, h) => s + h, 0)).toBe(24);
     });
 
@@ -79,23 +86,23 @@ describe('processCSVRows — consultant aggregation', () => {
             { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' },
             { Worker: 'Alice', 'Rate to Bill': '150', 'Hours To Bill': '8', 'Transaction Date': '4/8/2026' },
         ]);
-        const [alice] = processCSVRows(rows);
+        const { consultants: [alice] } = processCSVRows(rows);
         expect(alice.rate).toBe(150);
     });
 
     it('strips $ and commas from the rate field', () => {
         const rows = makeRows([{ Worker: 'Alice', 'Rate to Bill': '$1,500', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' }]);
-        expect(processCSVRows(rows)[0].rate).toBe(1500);
+        expect(processCSVRows(rows).consultants[0].rate).toBe(1500);
     });
 
     it('filters out the literal "Unknown" worker name', () => {
         const rows = makeRows([{ Worker: 'Unknown', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' }]);
-        expect(processCSVRows(rows)).toHaveLength(0);
+        expect(processCSVRows(rows).consultants).toHaveLength(0);
     });
 
     it('filters out consultants with zero total hours', () => {
         const rows = makeRows([{ Worker: 'Ghost', 'Rate to Bill': '100', 'Hours To Bill': '0', 'Transaction Date': '4/1/2026' }]);
-        expect(processCSVRows(rows)).toHaveLength(0);
+        expect(processCSVRows(rows).consultants).toHaveLength(0);
     });
 
     it('sorts consultants alphabetically by name', () => {
@@ -103,9 +110,9 @@ describe('processCSVRows — consultant aggregation', () => {
             { Worker: 'Zara',  'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' },
             { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' },
         ]);
-        const result = processCSVRows(rows);
-        expect(result[0].name).toBe('Alice');
-        expect(result[1].name).toBe('Zara');
+        const { consultants } = processCSVRows(rows);
+        expect(consultants[0].name).toBe('Alice');
+        expect(consultants[1].name).toBe('Zara');
     });
 });
 
@@ -117,12 +124,12 @@ describe('processCSVRows — billedTotal calculation', () => {
             Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8',
             'Transaction Date': '4/1/2026', 'Amount to Bill': '1200',
         }]);
-        expect(processCSVRows(rows)[0].billedTotal).toBe(1200);
+        expect(processCSVRows(rows).consultants[0].billedTotal).toBe(1200);
     });
 
     it('falls back to rate × hours when Amount to Bill is absent', () => {
         const rows = makeRows([{ Worker: 'Alice', 'Rate to Bill': '150', 'Hours To Bill': '10', 'Transaction Date': '4/1/2026' }]);
-        expect(processCSVRows(rows)[0].billedTotal).toBe(1500);
+        expect(processCSVRows(rows).consultants[0].billedTotal).toBe(1500);
     });
 
     it('accumulates Amount to Bill across multiple rows', () => {
@@ -130,7 +137,7 @@ describe('processCSVRows — billedTotal calculation', () => {
             { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026', 'Amount to Bill': '800'  },
             { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/8/2026', 'Amount to Bill': '1000' },
         ]);
-        expect(processCSVRows(rows)[0].billedTotal).toBe(1800);
+        expect(processCSVRows(rows).consultants[0].billedTotal).toBe(1800);
     });
 });
 
@@ -142,7 +149,48 @@ describe('processCSVRows — weekly hours grouping', () => {
             { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '4/1/2026' },
             { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '4', 'Transaction Date': '4/2/2026' },
         ]);
-        expect(processCSVRows(rows)[0].weeklyHours['2026-04-W1']).toBe(12);
+        expect(processCSVRows(rows).consultants[0].weeklyHours['2026-04-W1']).toBe(12);
+    });
+});
+
+// ── processCSVRows — date validation ─────────────────────────────────────────
+
+describe('processCSVRows — date validation', () => {
+    it('skips rows with dates before startDate and increments skippedDateRows', () => {
+        const rows = makeRows([
+            { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '3/1/2026' },
+        ]);
+        const { consultants, skippedDateRows } = processCSVRows(rows, { startDate: '2026-04-01' });
+        expect(skippedDateRows).toBe(1);
+        expect(consultants).toHaveLength(0);
+    });
+
+    it('skips rows with dates after endDate and increments skippedDateRows', () => {
+        const rows = makeRows([
+            { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '7/1/2026' },
+        ]);
+        const { consultants, skippedDateRows } = processCSVRows(rows, { endDate: '2026-06-30' });
+        expect(skippedDateRows).toBe(1);
+        expect(consultants).toHaveLength(0);
+    });
+
+    it('keeps rows within the date range', () => {
+        const rows = makeRows([
+            { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '5/1/2026' },
+        ]);
+        const { consultants, skippedDateRows } = processCSVRows(rows, { startDate: '2026-04-01', endDate: '2026-06-30' });
+        expect(skippedDateRows).toBe(0);
+        expect(consultants).toHaveLength(1);
+    });
+
+    it('counts partial skips correctly when some rows are in range and some are not', () => {
+        const rows = makeRows([
+            { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '3/1/2026' },
+            { Worker: 'Alice', 'Rate to Bill': '100', 'Hours To Bill': '8', 'Transaction Date': '5/1/2026' },
+        ]);
+        const { consultants, skippedDateRows } = processCSVRows(rows, { startDate: '2026-04-01', endDate: '2026-06-30' });
+        expect(skippedDateRows).toBe(1);
+        expect(consultants).toHaveLength(1);
     });
 });
 

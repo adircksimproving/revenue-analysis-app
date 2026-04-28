@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { getQuarterWeeks, getWeeksRemainingInQuarter, isWeekFuture } from './date-utils.js';
+import { getQuarterWeeks, isWeekFuture, isWeekOnOrAfterProjectStart } from './date-utils.js';
 import { updateFinancialSummary } from './metrics.js';
 import { api } from './api.js';
 
@@ -8,10 +8,13 @@ let activeModalConsultantIndex = -1;
 export function openForecastModal(consultantIndex) {
     const consultant = state.consultantsData[consultantIndex];
     activeModalConsultantIndex = consultantIndex;
-    const weeksLeft = getWeeksRemainingInQuarter();
+    const quarterWeeks = getQuarterWeeks(state.currentQuarter.year, state.currentQuarter.quarter);
+    const effectiveWeeks = quarterWeeks.filter(w => isWeekFuture(w) && isWeekOnOrAfterProjectStart(w));
+    const weeksLeft = effectiveWeeks.length;
+    const scope = state.endDate ? 'project' : `Q${state.currentQuarter.quarter} ${state.currentQuarter.year}`;
     document.getElementById('modalTitle').textContent = `Set Forecast — ${consultant.name}`;
     document.getElementById('modalSubtitle').textContent =
-        `${weeksLeft} week${weeksLeft !== 1 ? 's' : ''} remaining in Q${state.currentQuarter.quarter} ${state.currentQuarter.year}`;
+        `${weeksLeft} week${weeksLeft !== 1 ? 's' : ''} remaining in ${scope}`;
     document.getElementById('modalHrsInput').value = consultant.forecastHoursPerWeek ?? 40;
     document.getElementById('forecastModal').classList.add('open');
     setTimeout(() => document.getElementById('modalHrsInput').select(), 50);
@@ -27,6 +30,7 @@ async function applyForecast() {
     const futureWeeklyHours = {};
     quarterWeeks.forEach(week => {
         if (!isWeekFuture(week)) return;
+        if (!isWeekOnOrAfterProjectStart(week)) return;
         consultant.weeklyHours[week] = hrsPerWeek;
         futureWeeklyHours[week] = hrsPerWeek;
         const input = document.querySelector(`.week-input[data-consultant="${activeModalConsultantIndex}"][data-week="${week}"]`);

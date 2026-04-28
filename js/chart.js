@@ -18,53 +18,100 @@ export function computeChartWeeks(consultantsData) {
     return [...past, ...future];
 }
 
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function getGranularity(weekCount) {
+    if (weekCount <= 26)  return 'week';
+    if (weekCount <= 215) return 'month';
+    return 'quarter';
+}
+
+function weekToPeriodKey(weekKey, granularity) {
+    if (granularity === 'week') return weekKey;
+    const match = weekKey.match(/(\d{4})-(\d{2})-W\d+/);
+    if (!match) return weekKey;
+    const year = parseInt(match[1]);
+    const month = parseInt(match[2]);
+    if (granularity === 'month') return `${year}-${String(month).padStart(2, '0')}`;
+    return `${year}-Q${Math.ceil(month / 3)}`;
+}
+
+function periodLabel(periodKey, granularity) {
+    if (granularity === 'week') {
+        const match = periodKey.match(/(\d{4})-(\d{2})-W(\d+)/);
+        if (!match) return periodKey;
+        const day = (parseInt(match[3]) - 1) * 7 + 1;
+        return `${MONTH_NAMES[parseInt(match[2]) - 1]} ${day}`;
+    }
+    if (granularity === 'month') {
+        const match = periodKey.match(/(\d{4})-(\d{2})/);
+        if (!match) return periodKey;
+        return `${MONTH_NAMES[parseInt(match[2]) - 1]} ${match[1]}`;
+    }
+    // quarter: '2026-Q2' → 'Q2 2026'
+    const match = periodKey.match(/(\d{4})-Q(\d)/);
+    return match ? `Q${match[2]} ${match[1]}` : periodKey;
+}
+
 export function buildChartData(consultantsData, budgetValue) {
     const weeks = computeChartWeeks(consultantsData);
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const granularity = getGranularity(weeks.length);
 
-    const labels = weeks.map(week => {
-        const match = week.match(/(\d{4})-(\d{2})-W(\d+)/);
-        if (!match) return week;
-        const day = (parseInt(match[3]) - 1) * 7 + 1;
-        return `${monthNames[parseInt(match[2]) - 1]} ${day}`;
+    // Per-week revenue
+    const weekRevenue = {};
+    weeks.forEach(w => {
+        weekRevenue[w] = consultantsData.reduce((sum, c) => sum + (c.weeklyHours[w] || 0) * c.rate, 0);
     });
 
-    const weeklyRevenue = weeks.map(week =>
-        consultantsData.reduce((sum, c) => sum + (c.weeklyHours[week] || 0) * c.rate, 0)
-    );
+    // Group weeks into ordered periods
+    const periodOrder = [];
+    const weeksInPeriod = {};
+    weeks.forEach(w => {
+        const key = weekToPeriodKey(w, granularity);
+        if (!weeksInPeriod[key]) { weeksInPeriod[key] = []; periodOrder.push(key); }
+        weeksInPeriod[key].push(w);
+    });
 
+    const labels = periodOrder.map(k => periodLabel(k, granularity));
+
+    // Actuals: cumulative sum of non-future weeks
     let cumulative = 0;
     let lastActualValue = 0;
     let bridgeIndex = -1;
-    const actualsData = [];
-    const forecastData = [];
+    const actualsData = new Array(periodOrder.length).fill(null);
 
-    weeks.forEach((week, i) => {
-        if (!isWeekFuture(week)) {
-            cumulative += weeklyRevenue[i];
-            actualsData.push(cumulative);
-            forecastData.push(null);
+    periodOrder.forEach((key, i) => {
+        const hasPast = weeksInPeriod[key].some(w => !isWeekFuture(w));
+        if (hasPast) {
+            const actualRev = weeksInPeriod[key]
+                .filter(w => !isWeekFuture(w))
+                .reduce((sum, w) => sum + weekRevenue[w], 0);
+            cumulative += actualRev;
+            actualsData[i] = cumulative;
             lastActualValue = cumulative;
             bridgeIndex = i;
-        } else {
-            actualsData.push(null);
-            forecastData.push(null);
         }
     });
 
+    // Forecast: starts at lastActualValue from the bridge period
     let forecastCumulative = lastActualValue;
-    weeks.forEach((week, i) => {
+    const forecastData = new Array(periodOrder.length).fill(null);
+
+    periodOrder.forEach((key, i) => {
         if (i === bridgeIndex) {
             forecastData[i] = lastActualValue;
-        } else if (isWeekFuture(week)) {
-            forecastCumulative += weeklyRevenue[i];
+        } else if (i > bridgeIndex) {
+            const forecastRev = weeksInPeriod[key]
+                .filter(w => isWeekFuture(w))
+                .reduce((sum, w) => sum + weekRevenue[w], 0);
+            forecastCumulative += forecastRev;
             forecastData[i] = forecastCumulative;
         }
     });
 
-    const budgetData = budgetValue > 0 ? weeks.map(() => budgetValue) : [];
+    const budgetData = budgetValue > 0 ? periodOrder.map(() => budgetValue) : [];
 
-    return { weeks, labels, actualsData, forecastData, budgetData };
+    return { labels, actualsData, forecastData, budgetData };
 }
 
 export function renderChart() {
@@ -136,7 +183,7 @@ export function renderChart() {
                 }
             },
             scales: {
-                x: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 12 } } },
+                x: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 12 }, maxRotation: 45, minRotation: 0 } },
                 y: {
                     grid: { color: '#f3f4f6' },
                     ticks: {

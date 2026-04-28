@@ -26,6 +26,8 @@ export function loadProject(db, id) {
         budgetValue: project.budget_value,
         clientId: project.client_id,
         clientName: project.client_name,
+        startDate: project.start_date ?? null,
+        endDate: project.end_date ?? null,
         deletedAt: project.deleted_at,
         createdAt: project.created_at,
         consultants,
