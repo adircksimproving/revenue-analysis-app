@@ -145,15 +145,15 @@ export async function generateProjectPDF(projectName, state) {
 
     // ── CHART ───────────────────────────────────────────────────────────────
     // Off-screen render at 800×400 — aspect ratio 0.5
-    const chartImg = buildChartImageForExport(state.consultantsData, state.budgetValue);
+    const chartImg = buildChartImageForExport(state.consultantsData, state.budgetValue, state.chartType);
     const chartH = contentWidth * 0.5;
     doc.addImage(chartImg, 'PNG', margin, y, contentWidth, chartH);
     y += chartH + 12;
 
-    // ── INTERSECTION CALLOUT ─────────────────────────────────────────────────
-    if (state.budgetValue > 0) {
-        const { weeks, labels, forecastData } = buildChartData(state.consultantsData, state.budgetValue);
-        const intersection = findBudgetIntersection(weeks, labels, forecastData, state.budgetValue);
+    // ── INTERSECTION CALLOUT (burn-up only) ──────────────────────────────────
+    if (state.budgetValue > 0 && state.chartType !== 'burndown') {
+        const { periods, labels, forecastData } = buildChartData(state.consultantsData, state.budgetValue);
+        const intersection = findBudgetIntersection(periods, labels, forecastData, state.budgetValue);
         if (intersection) {
             doc.setFillColor(235, 244, 251);
             doc.setDrawColor(0, 85, 150);

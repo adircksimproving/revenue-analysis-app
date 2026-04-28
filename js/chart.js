@@ -111,17 +111,38 @@ export function buildChartData(consultantsData, budgetValue) {
 
     const budgetData = budgetValue > 0 ? periodOrder.map(() => budgetValue) : [];
 
-    return { labels, actualsData, forecastData, budgetData };
+    return { periods: periodOrder, labels, actualsData, forecastData, budgetData };
 }
 
-export function renderChart() {
-    if (state.consultantsData.length === 0) return;
+export function buildBurndownData(consultantsData, budgetValue) {
+    const { periods, labels, actualsData, forecastData } = buildChartData(consultantsData, budgetValue);
 
-    const { labels, actualsData, forecastData, budgetData } = buildChartData(state.consultantsData, state.budgetValue);
+    // Actuals remaining: budget minus cumulative actuals (past periods only, null for future)
+    const actualsRemaining = actualsData.map(v => v === null ? null : budgetValue - v);
 
+    // Forecast remaining: continuous line from first period through projected end.
+    // Follows actuals for past periods, then extends into future spend — a single
+    // unbroken descending line rather than one that only starts at the bridge.
+    const forecastRemaining = periods.map((_, i) => {
+        if (actualsData[i] !== null) return budgetValue - actualsData[i];
+        if (forecastData[i] !== null) return budgetValue - forecastData[i];
+        return null;
+    });
+
+    return {
+        periods,
+        labels,
+        actualsData: actualsRemaining,
+        forecastData: forecastRemaining,
+        // Flat line at 0 — the "budget exhausted" reference
+        budgetData: budgetValue > 0 ? labels.map(() => 0) : [],
+    };
+}
+
+function buildDatasets(actualsData, forecastData, budgetData, isBurndown, budgetValue) {
     const datasets = [
         {
-            label: 'Actuals',
+            label: isBurndown ? 'Actuals Remaining' : 'Actuals',
             data: actualsData,
             borderColor: '#059669',
             backgroundColor: 'rgba(5,150,105,0.08)',
@@ -133,7 +154,7 @@ export function renderChart() {
             spanGaps: false,
         },
         {
-            label: 'Forecast',
+            label: isBurndown ? 'Forecast Remaining' : 'Forecast',
             data: forecastData,
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59,130,246,0.08)',
@@ -147,9 +168,9 @@ export function renderChart() {
         },
     ];
 
-    if (state.budgetValue > 0) {
+    if (budgetValue > 0) {
         datasets.push({
-            label: 'Budget',
+            label: isBurndown ? 'Budget Exhausted' : 'Budget',
             data: budgetData,
             borderColor: '#9ca3af',
             borderWidth: 1.5,
@@ -160,8 +181,21 @@ export function renderChart() {
         });
     }
 
-    document.getElementById('chartQuarterLabel').textContent =
-        `${state.currentQuarter.quarter} ${state.currentQuarter.year}`;
+    return datasets;
+}
+
+export function renderChart() {
+    if (state.consultantsData.length === 0) return;
+
+    const isBurndown = state.chartType === 'burndown';
+    const { labels, actualsData, forecastData, budgetData } = isBurndown
+        ? buildBurndownData(state.consultantsData, state.budgetValue)
+        : buildChartData(state.consultantsData, state.budgetValue);
+
+    const datasets = buildDatasets(actualsData, forecastData, budgetData, isBurndown, state.budgetValue);
+
+    const titleEl = document.getElementById('chartTitle');
+    if (titleEl) titleEl.textContent = isBurndown ? 'Remaining Budget' : 'Cumulative Revenue';
 
     const chartConfig = {
         type: 'line',
@@ -207,49 +241,13 @@ export function renderChart() {
 // Returns a base64 PNG of the chart rendered to an off-screen canvas at a fixed
 // size. Using an off-screen canvas with responsive:false avoids the 0×0 dimension
 // problem that occurs when the chart container is display:none on the page.
-export function buildChartImageForExport(consultantsData, budgetValue) {
-    const { labels, actualsData, forecastData, budgetData } = buildChartData(consultantsData, budgetValue);
+export function buildChartImageForExport(consultantsData, budgetValue, chartType = 'burnup') {
+    const isBurndown = chartType === 'burndown';
+    const { labels, actualsData, forecastData, budgetData } = isBurndown
+        ? buildBurndownData(consultantsData, budgetValue)
+        : buildChartData(consultantsData, budgetValue);
 
-    const datasets = [
-        {
-            label: 'Actuals',
-            data: actualsData,
-            borderColor: '#059669',
-            backgroundColor: 'rgba(5,150,105,0.08)',
-            borderWidth: 2.5,
-            pointRadius: 4,
-            pointBackgroundColor: '#059669',
-            tension: 0.3,
-            fill: false,
-            spanGaps: false,
-        },
-        {
-            label: 'Forecast',
-            data: forecastData,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59,130,246,0.08)',
-            borderWidth: 2.5,
-            borderDash: [6, 4],
-            pointRadius: 3,
-            pointBackgroundColor: '#3b82f6',
-            tension: 0.3,
-            fill: false,
-            spanGaps: false,
-        },
-    ];
-
-    if (budgetValue > 0) {
-        datasets.push({
-            label: 'Budget',
-            data: budgetData,
-            borderColor: '#9ca3af',
-            borderWidth: 1.5,
-            borderDash: [4, 4],
-            pointRadius: 0,
-            tension: 0,
-            fill: false,
-        });
-    }
+    const datasets = buildDatasets(actualsData, forecastData, budgetData, isBurndown, budgetValue);
 
     const offscreen = document.createElement('canvas');
     offscreen.width = 800;

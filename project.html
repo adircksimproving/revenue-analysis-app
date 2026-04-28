@@ -75,7 +75,13 @@
         </div>
 
         <div id="chartContainer" class="chart-container" style="display: none;">
-            <div class="chart-title">Cumulative Revenue — Q<span id="chartQuarterLabel"></span></div>
+            <div class="chart-header">
+                <div class="chart-title" id="chartTitle">Cumulative Revenue</div>
+                <div class="chart-type-toggle">
+                    <button class="chart-type-btn active" id="btnBurnup">Burn Up</button>
+                    <button class="chart-type-btn" id="btnBurndown">Burn Down</button>
+                </div>
+            </div>
             <canvas id="revenueChart"></canvas>
         </div>
 

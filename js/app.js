@@ -6,6 +6,7 @@ import { openForecastModal, initModal } from './modal.js';
 import { api } from './api.js';
 import { populateFromProject } from './data-processor.js';
 import { generateProjectPDF } from './pdf-export.js';
+import { renderChart } from './chart.js';
 
 setCurrentQuarter();
 initUpload();
@@ -52,6 +53,16 @@ document.getElementById('forecastToggleTile').addEventListener('click', () => {
     icon.textContent = chartVisible ? '▲ chart' : '▼ chart';
     tile.classList.toggle('chart-active', chartVisible);
 });
+
+function setChartType(type) {
+    state.chartType = type;
+    document.getElementById('btnBurnup').classList.toggle('active', type === 'burnup');
+    document.getElementById('btnBurndown').classList.toggle('active', type === 'burndown');
+    renderChart();
+}
+
+document.getElementById('btnBurnup').addEventListener('click', () => setChartType('burnup'));
+document.getElementById('btnBurndown').addEventListener('click', () => setChartType('burndown'));
 
 function enableExportButton() {
     const btn = document.getElementById('btnExportPDF');
