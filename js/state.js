@@ -7,4 +7,5 @@ export const state = {
     actualsValue: 0,
     startDate: null,
     endDate: null,
+    chartType: 'burnup',
 };
