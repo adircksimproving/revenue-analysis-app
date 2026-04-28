@@ -1,11 +1,37 @@
 import { state } from './state.js';
-import { getQuarterWeeks, isWeekFuture } from './date-utils.js';
+import { getQuarterWeeks, isWeekFuture, isWeekOnOrAfterProjectStart } from './date-utils.js';
 import { updateFinancialSummary } from './metrics.js';
 
 export function updateQuarterDisplay() {
     if (state.consultantsData.length > 0) {
-        renderTable(state.consultantsData, getQuarterWeeks(state.currentQuarter.year, state.currentQuarter.quarter));
+        const weeks = getQuarterWeeks(state.currentQuarter.year, state.currentQuarter.quarter)
+            .filter(w => isWeekOnOrAfterProjectStart(w));
+        renderTable(state.consultantsData, weeks);
     }
+}
+
+function getProjectQuarterBounds() {
+    const bounds = { minYear: null, minQuarter: null, maxYear: null, maxQuarter: null };
+    if (state.startDate) {
+        const d = new Date(state.startDate);
+        bounds.minYear = d.getFullYear();
+        bounds.minQuarter = Math.ceil((d.getMonth() + 1) / 3);
+    }
+    if (state.endDate) {
+        const d = new Date(state.endDate);
+        bounds.maxYear = d.getFullYear();
+        bounds.maxQuarter = Math.ceil((d.getMonth() + 1) / 3);
+    }
+    return bounds;
+}
+
+function updateNavButtonStates(prevBtn, nextBtn) {
+    const { minYear, minQuarter } = getProjectQuarterBounds();
+    const { year, quarter } = state.currentQuarter;
+    if (prevBtn && minYear != null) {
+        prevBtn.disabled = year < minYear || (year === minYear && quarter <= minQuarter);
+    }
+    if (nextBtn) nextBtn.disabled = false;
 }
 
 function attachQuarterNavListeners() {
@@ -14,25 +40,29 @@ function attachQuarterNavListeners() {
 
     if (prevBtn) {
         prevBtn.onclick = () => {
-            state.currentQuarter.quarter--;
-            if (state.currentQuarter.quarter < 1) {
-                state.currentQuarter.quarter = 4;
-                state.currentQuarter.year--;
-            }
+            let q = state.currentQuarter.quarter - 1;
+            let y = state.currentQuarter.year;
+            if (q < 1) { q = 4; y--; }
+            const { minYear, minQuarter } = getProjectQuarterBounds();
+            if (minYear != null && (y < minYear || (y === minYear && q < minQuarter))) return;
+            state.currentQuarter.quarter = q;
+            state.currentQuarter.year = y;
             updateQuarterDisplay();
         };
     }
 
     if (nextBtn) {
         nextBtn.onclick = () => {
-            state.currentQuarter.quarter++;
-            if (state.currentQuarter.quarter > 4) {
-                state.currentQuarter.quarter = 1;
-                state.currentQuarter.year++;
-            }
+            let q = state.currentQuarter.quarter + 1;
+            let y = state.currentQuarter.year;
+            if (q > 4) { q = 1; y++; }
+            state.currentQuarter.quarter = q;
+            state.currentQuarter.year = y;
             updateQuarterDisplay();
         };
     }
+
+    updateNavButtonStates(prevBtn, nextBtn);
 }
 
 export function renderTable(consultants, weeks) {

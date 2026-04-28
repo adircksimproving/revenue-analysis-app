@@ -2,17 +2,22 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Provide a controlled state so quarter-dependent helpers are deterministic
 vi.mock('../js/state.js', () => ({
-    state: { currentQuarter: { year: 2026, quarter: 2 } },
+    state: { currentQuarter: { year: 2026, quarter: 2 }, startDate: null, endDate: null },
 }));
 
 import { state } from '../js/state.js';
 import {
     getQuarterWeeks,
     getWeekKey,
+    parseDateRaw,
     isWeekFuture,
+    isWeekWithinProjectDates,
     groupWeeksByQuarter,
     getWeeksRemainingInQuarter,
     setCurrentQuarter,
+    weekKeyToStartDate,
+    weekKeyToEndDate,
+    formatDateISO,
 } from '../js/date-utils.js';
 
 // Pin "today" to April 22, 2026 (mid Q2) for all time-sensitive tests
@@ -178,6 +183,122 @@ describe('setCurrentQuarter', () => {
         vi.setSystemTime(new Date(2026, 11, 31));
         setCurrentQuarter();
         expect(state.currentQuarter.quarter).toBe(4);
+    });
+});
+
+// ── parseDateRaw ─────────────────────────────────────────────────────────────
+
+describe('parseDateRaw', () => {
+    it('parses M/D/YYYY format', () => {
+        const d = parseDateRaw('4/1/2026');
+        expect(d).toBeInstanceOf(Date);
+        expect(d.getFullYear()).toBe(2026);
+        expect(d.getMonth()).toBe(3);
+        expect(d.getDate()).toBe(1);
+    });
+
+    it('parses M/D/YY format with century offset', () => {
+        const d = parseDateRaw('1/15/26');
+        expect(d.getFullYear()).toBe(2026);
+    });
+
+    it('parses ISO format', () => {
+        const d = parseDateRaw('2026-04-01');
+        expect(d).not.toBeNull();
+        expect(d.getFullYear()).toBe(2026);
+    });
+
+    it('returns null for unparseable input', () => {
+        expect(parseDateRaw('not-a-date')).toBeNull();
+    });
+
+    it('returns null for empty string', () => {
+        expect(parseDateRaw('')).toBeNull();
+    });
+
+    it('returns null for null input', () => {
+        expect(parseDateRaw(null)).toBeNull();
+    });
+});
+
+// ── weekKeyToStartDate / weekKeyToEndDate / formatDateISO ─────────────────────
+
+describe('weekKeyToStartDate', () => {
+    it('returns April 1 for 2026-04-W1', () => {
+        const d = weekKeyToStartDate('2026-04-W1');
+        expect(d.getFullYear()).toBe(2026);
+        expect(d.getMonth()).toBe(3);
+        expect(d.getDate()).toBe(1);
+    });
+
+    it('returns April 8 for 2026-04-W2', () => {
+        const d = weekKeyToStartDate('2026-04-W2');
+        expect(d.getDate()).toBe(8);
+    });
+
+    it('returns null for a malformed key', () => {
+        expect(weekKeyToStartDate('bad-key')).toBeNull();
+    });
+});
+
+describe('weekKeyToEndDate', () => {
+    it('returns April 7 for 2026-04-W1', () => {
+        const d = weekKeyToEndDate('2026-04-W1');
+        expect(d.getDate()).toBe(7);
+    });
+
+    it('returns null for a malformed key', () => {
+        expect(weekKeyToEndDate('bad-key')).toBeNull();
+    });
+});
+
+describe('formatDateISO', () => {
+    it('formats a date as YYYY-MM-DD', () => {
+        expect(formatDateISO(new Date(2026, 3, 1))).toBe('2026-04-01');
+    });
+
+    it('zero-pads single-digit months and days', () => {
+        expect(formatDateISO(new Date(2026, 0, 5))).toBe('2026-01-05');
+    });
+});
+
+// ── isWeekWithinProjectDates ─────────────────────────────────────────────────
+
+describe('isWeekWithinProjectDates', () => {
+    beforeEach(() => {
+        state.startDate = null;
+        state.endDate = null;
+    });
+
+    it('returns true when no project dates are set', () => {
+        expect(isWeekWithinProjectDates('2026-04-W1')).toBe(true);
+    });
+
+    it('returns true when the week is within the project range', () => {
+        state.startDate = '2026-04-01';
+        state.endDate = '2026-06-30';
+        expect(isWeekWithinProjectDates('2026-05-W1')).toBe(true);
+    });
+
+    it('returns false when the week ends before the project start', () => {
+        state.startDate = '2026-05-01';
+        expect(isWeekWithinProjectDates('2026-04-W1')).toBe(false);
+    });
+
+    it('returns false when the week starts after the project end', () => {
+        state.endDate = '2026-04-15';
+        expect(isWeekWithinProjectDates('2026-05-W1')).toBe(false);
+    });
+
+    it('returns true for a week that straddles the project start boundary', () => {
+        // W1 of April starts April 1, ends April 7; project starts April 5
+        state.startDate = '2026-04-05';
+        expect(isWeekWithinProjectDates('2026-04-W1')).toBe(true);
+    });
+
+    it('returns true when only startDate is set and week is after it', () => {
+        state.startDate = '2026-04-01';
+        expect(isWeekWithinProjectDates('2026-06-W1')).toBe(true);
     });
 });
 

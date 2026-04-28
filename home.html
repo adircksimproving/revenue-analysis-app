@@ -157,6 +157,31 @@
 
         .btn-create:hover { background: #004a80; }
 
+        .date-row {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .date-field {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .date-field label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .date-field input[type="date"] {
+            margin-bottom: 0;
+        }
+
         .btn-cancel-form {
             padding: 0.45rem 1rem;
             background: white;
@@ -486,6 +511,16 @@
             <input type="text" id="newProjectName" placeholder="Project name" maxlength="100" />
             <input list="clientsDatalist" id="newProjectClient" placeholder="Client name" maxlength="100" autocomplete="off" />
             <datalist id="clientsDatalist"></datalist>
+            <div class="date-row">
+                <div class="date-field">
+                    <label for="newProjectStartDate">Start date</label>
+                    <input type="date" id="newProjectStartDate" />
+                </div>
+                <div class="date-field">
+                    <label for="newProjectEndDate">End date</label>
+                    <input type="date" id="newProjectEndDate" />
+                </div>
+            </div>
             <div class="new-project-form-actions">
                 <button class="btn-create" id="btnCreate">Create</button>
                 <button class="btn-cancel-form" id="btnCancelForm">Cancel</button>
@@ -501,6 +536,16 @@
             <input type="text" id="editProjectName" placeholder="Project name" maxlength="100" />
             <input list="editClientsDatalist" id="editProjectClient" placeholder="Client name" maxlength="100" autocomplete="off" />
             <datalist id="editClientsDatalist"></datalist>
+            <div class="date-row">
+                <div class="date-field">
+                    <label for="editProjectStartDate">Start date</label>
+                    <input type="date" id="editProjectStartDate" />
+                </div>
+                <div class="date-field">
+                    <label for="editProjectEndDate">End date</label>
+                    <input type="date" id="editProjectEndDate" />
+                </div>
+            </div>
             <div class="edit-dialog-actions">
                 <button class="btn-cancel-delete" id="btnCancelEdit">Cancel</button>
                 <button class="btn-save" id="btnSaveEdit">Save</button>
@@ -528,7 +573,7 @@
 
         function tileHtml(p) {
             return `
-                <div class="project-tile-wrapper" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-client="${escapeHtml(p.clientName || '')}">
+                <div class="project-tile-wrapper" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-client="${escapeHtml(p.clientName || '')}" data-start-date="${p.startDate || ''}" data-end-date="${p.endDate || ''}">
                     <a href="project.html?id=${p.id}" class="project-tile">
                         <div class="project-tile-icon">📈</div>
                         <div class="project-tile-name">${escapeHtml(p.name)}</div>
@@ -605,7 +650,7 @@
                 e.preventDefault();
                 editBtn.closest('.tile-menu-dropdown').classList.remove('open');
                 const wrapper = editBtn.closest('.project-tile-wrapper');
-                showEditModal(wrapper.dataset.id, wrapper.dataset.name, wrapper.dataset.client);
+                showEditModal(wrapper.dataset.id, wrapper.dataset.name, wrapper.dataset.client, wrapper.dataset.startDate, wrapper.dataset.endDate);
                 return;
             }
 
@@ -620,10 +665,12 @@
         // Edit modal
         let pendingEditId = null;
 
-        function showEditModal(id, name, clientName) {
+        function showEditModal(id, name, clientName, startDate, endDate) {
             pendingEditId = id;
             document.getElementById('editProjectName').value = name;
             document.getElementById('editProjectClient').value = clientName;
+            document.getElementById('editProjectStartDate').value = startDate || '';
+            document.getElementById('editProjectEndDate').value = endDate || '';
             populateClientDatalist('editClientsDatalist');
             document.getElementById('editOverlay').classList.add('open');
             document.getElementById('editProjectName').focus();
@@ -647,11 +694,13 @@
             const clientName = document.getElementById('editProjectClient').value.trim();
             if (!name) { document.getElementById('editProjectName').focus(); return; }
             if (!clientName) { document.getElementById('editProjectClient').focus(); return; }
+            const startDate = document.getElementById('editProjectStartDate').value || null;
+            const endDate = document.getElementById('editProjectEndDate').value || null;
             const id = pendingEditId;
             pendingEditId = null;
             document.getElementById('editOverlay').classList.remove('open');
             try {
-                await api.updateProject(id, { name, clientName });
+                await api.updateProject(id, { name, clientName, startDate, endDate });
                 await loadProjects();
                 populateClientDatalist('clientsDatalist');
             } catch (err) {
@@ -706,6 +755,8 @@
             form.classList.remove('visible');
             nameInput.value = '';
             clientInput.value = '';
+            document.getElementById('newProjectStartDate').value = '';
+            document.getElementById('newProjectEndDate').value = '';
         });
 
         document.getElementById('btnCreate').addEventListener('click', createProject);
@@ -717,8 +768,10 @@
             const clientName = clientInput.value.trim();
             if (!name) { nameInput.focus(); return; }
             if (!clientName) { clientInput.focus(); return; }
+            const startDate = document.getElementById('newProjectStartDate').value || null;
+            const endDate = document.getElementById('newProjectEndDate').value || null;
             try {
-                const project = await api.createProject(name, clientName);
+                const project = await api.createProject(name, clientName, startDate, endDate);
                 location.href = `project.html?id=${project.id}`;
             } catch (err) {
                 alert('Failed to create project. Is the server running?');

@@ -1,11 +1,11 @@
 import { state } from './state.js';
-import { isWeekFuture } from './date-utils.js';
+import { isWeekFuture, isWeekOnOrAfterProjectStart } from './date-utils.js';
 import { renderChart } from './chart.js';
 
 export function updateFinancialSummary() {
     const forecastedRevenue = state.consultantsData.reduce((sum, c) => {
         const futureHours = Object.entries(c.weeklyHours)
-            .filter(([week]) => isWeekFuture(week))
+            .filter(([week]) => isWeekFuture(week) && isWeekOnOrAfterProjectStart(week))
             .reduce((s, [, hrs]) => s + hrs, 0);
         return sum + c.rate * futureHours;
     }, 0);

@@ -20,21 +20,23 @@ router.get('/', (req, res) => {
         budgetValue: p.budget_value,
         clientId: p.client_id,
         clientName: p.client_name,
+        startDate: p.start_date ?? null,
+        endDate: p.end_date ?? null,
         createdAt: p.created_at,
     })));
 });
 
 // Create a new project
 router.post('/', (req, res) => {
-    const { name, description = '', clientName } = req.body;
+    const { name, description = '', clientName, startDate = null, endDate = null } = req.body;
     if (!name?.trim() || !clientName?.trim()) {
         return res.status(400).json({ error: 'Project name and client are required' });
     }
     db.prepare('INSERT OR IGNORE INTO clients (user_id, name) VALUES (?, ?)').run(USER_ID, clientName.trim());
     const client = db.prepare('SELECT id FROM clients WHERE user_id = ? AND name = ?').get(USER_ID, clientName.trim());
     const result = db.prepare(
-        'INSERT INTO projects (user_id, name, description, client_id) VALUES (?, ?, ?, ?)'
-    ).run(USER_ID, name.trim(), description.trim(), client.id);
+        'INSERT INTO projects (user_id, name, description, client_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(USER_ID, name.trim(), description.trim(), client.id, startDate || null, endDate || null);
     const project = loadProject(db, result.lastInsertRowid);
     res.status(201).json(project);
 });
@@ -54,6 +56,8 @@ router.put('/:id', (req, res) => {
     const name        = req.body.name        ?? project.name;
     const description = req.body.description ?? project.description;
     const budgetValue = req.body.budgetValue  ?? project.budget_value;
+    const startDate   = req.body.startDate !== undefined ? (req.body.startDate || null) : project.start_date;
+    const endDate     = req.body.endDate   !== undefined ? (req.body.endDate   || null) : project.end_date;
 
     let clientId = project.client_id;
     if (req.body.clientName !== undefined) {
@@ -66,8 +70,8 @@ router.put('/:id', (req, res) => {
     }
 
     db.prepare(
-        `UPDATE projects SET name = ?, description = ?, budget_value = ?, client_id = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(name, description, budgetValue, clientId, project.id);
+        `UPDATE projects SET name = ?, description = ?, budget_value = ?, client_id = ?, start_date = ?, end_date = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(name, description, budgetValue, clientId, startDate, endDate, project.id);
 
     res.json(loadProject(db, project.id));
 });

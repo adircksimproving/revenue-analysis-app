@@ -65,6 +65,10 @@ export const USER_ID = db.prepare('SELECT id FROM users WHERE email = ?')
 // Migration: add client_id to projects if it doesn't exist yet
 try { db.exec('ALTER TABLE projects ADD COLUMN client_id INTEGER REFERENCES clients(id)'); } catch {}
 
+// Migration: add start/end dates to projects
+try { db.exec('ALTER TABLE projects ADD COLUMN start_date TEXT DEFAULT NULL'); } catch {}
+try { db.exec('ALTER TABLE projects ADD COLUMN end_date TEXT DEFAULT NULL'); } catch {}
+
 // Seed Costco as the default client and assign it to any unassigned projects (AC2.2.1)
 db.prepare('INSERT OR IGNORE INTO clients (user_id, name) VALUES (?, ?)').run(USER_ID, 'Costco');
 const costcoId = db.prepare('SELECT id FROM clients WHERE user_id = ? AND name = ?').get(USER_ID, 'Costco').id;

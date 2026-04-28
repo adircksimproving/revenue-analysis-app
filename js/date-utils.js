@@ -31,35 +31,36 @@ export function getQuarterWeeks(year, quarter) {
     return weeks;
 }
 
-export function getWeekKey(dateStr) {
+export function parseDateRaw(dateStr) {
+    if (!dateStr) return null;
     try {
         let date;
-
         if (dateStr.includes('/')) {
             const parts = dateStr.split('/');
             if (parts.length === 3) {
                 let month = parseInt(parts[0]);
                 let day = parseInt(parts[1]);
                 let year = parseInt(parts[2]);
-
-                if (year < 100) {
-                    year += 2000;
-                }
-
+                if (year < 100) year += 2000;
                 date = new Date(year, month - 1, day);
             }
         } else {
             date = new Date(dateStr);
         }
+        return date && !isNaN(date.getTime()) ? date : null;
+    } catch {
+        return null;
+    }
+}
 
-        if (!date || isNaN(date.getTime())) return dateStr;
-
+export function getWeekKey(dateStr) {
+    try {
+        const date = parseDateRaw(dateStr);
+        if (!date) return dateStr;
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const day = date.getDate();
-
         const weekOfMonth = Math.ceil(day / 7);
-
         return `${year}-${String(month).padStart(2, '0')}-W${weekOfMonth}`;
     } catch (e) {
         return dateStr;
@@ -74,6 +75,43 @@ export function isWeekFuture(weekKey) {
     const weekOfMonth = parseInt(match[3]);
     const weekStart = new Date(year, month - 1, (weekOfMonth - 1) * 7 + 1);
     return weekStart > new Date();
+}
+
+export function weekKeyToStartDate(weekKey) {
+    const match = weekKey.match(/(\d{4})-(\d{2})-W(\d+)/);
+    if (!match) return null;
+    return new Date(parseInt(match[1]), parseInt(match[2]) - 1, (parseInt(match[3]) - 1) * 7 + 1);
+}
+
+export function weekKeyToEndDate(weekKey) {
+    const start = weekKeyToStartDate(weekKey);
+    if (!start) return null;
+    return new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+}
+
+export function formatDateISO(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+export function isWeekWithinProjectDates(weekKey) {
+    const { startDate, endDate } = state;
+    if (!startDate && !endDate) return true;
+    const weekStart = weekKeyToStartDate(weekKey);
+    const weekEnd = weekKeyToEndDate(weekKey);
+    if (!weekStart || !weekEnd) return true;
+    if (startDate && weekEnd < new Date(startDate)) return false;
+    if (endDate && weekStart > new Date(endDate)) return false;
+    return true;
+}
+
+export function isWeekOnOrAfterProjectStart(weekKey) {
+    if (!state.startDate) return true;
+    const weekEnd = weekKeyToEndDate(weekKey);
+    if (!weekEnd) return true;
+    return weekEnd >= new Date(state.startDate);
 }
 
 export function groupWeeksByQuarter(weeks) {

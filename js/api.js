@@ -16,7 +16,7 @@ async function request(method, path, body) {
 export const api = {
     getClients:    ()                        => request('GET',    '/clients'),
     getProjects:   ()                        => request('GET',    '/projects'),
-    createProject: (name, clientName, desc)  => request('POST',   '/projects',        { name, clientName, description: desc }),
+    createProject: (name, clientName, startDate, endDate, desc) => request('POST', '/projects', { name, clientName, startDate, endDate, description: desc }),
     getProject:    (id)                      => request('GET',    `/projects/${id}`),
     updateProject: (id, data)                => request('PUT',    `/projects/${id}`,  data),
     deleteProject: (id)                      => request('DELETE', `/projects/${id}`),

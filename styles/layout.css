@@ -51,6 +51,15 @@ h1 {
     color: #c00;
 }
 
+.warning-message {
+    background: #fffbea;
+    border: 1px solid #f5d76e;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    color: #7a5c00;
+}
+
 .empty-state {
     text-align: center;
     padding: 4rem 2rem;
