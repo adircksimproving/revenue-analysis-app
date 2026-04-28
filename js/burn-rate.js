@@ -53,6 +53,17 @@ export function calculateBurnRate(startDate, endDate, consultantsData) {
     return total;
 }
 
+export function getEarliestDataDate(consultantsData) {
+    let earliest = null;
+    for (const consultant of consultantsData) {
+        for (const weekKey of Object.keys(consultant.weeklyHours)) {
+            const date = weekKeyToStartDate(weekKey);
+            if (date && (!earliest || date < earliest)) earliest = date;
+        }
+    }
+    return earliest;
+}
+
 export function getBudgetPaceInfo(burnRate, windowDays, budgetValue, actualsValue, endDate) {
     if (!budgetValue || windowDays <= 0 || burnRate <= 0) return null;
 

@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { isWeekFuture, isWeekOnOrAfterProjectStart } from './date-utils.js';
 import { renderChart } from './chart.js';
-import { calculateBurnRate, getBurnRatePeriod, getBudgetPaceInfo } from './burn-rate.js';
+import { calculateBurnRate, getBurnRatePeriod, getBudgetPaceInfo, getEarliestDataDate } from './burn-rate.js';
 
 export function updateFinancialSummary() {
     const forecastedRevenue = state.consultantsData.reduce((sum, c) => {
@@ -37,6 +37,11 @@ export function updateBurnRate() {
 
     document.getElementById('burnRateValue').textContent = '$' + Math.round(burnRate).toLocaleString();
     document.getElementById('burnRatePeriodLabel').textContent = label;
+
+    const earliest = getEarliestDataDate(state.consultantsData);
+    const minVal = earliest ? earliest.toISOString().slice(0, 10) : '';
+    document.getElementById('burnRateStart').min = minVal;
+    document.getElementById('burnRateEnd').min = minVal;
 
     const paceInfo = getBudgetPaceInfo(burnRate, windowDays, state.budgetValue, state.actualsValue, state.endDate);
     const paceEl = document.getElementById('burnRatePace');

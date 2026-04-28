@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getBurnRatePeriod, calculateBurnRate, getBudgetPaceInfo } from '../js/burn-rate.js';
+import { getBurnRatePeriod, calculateBurnRate, getBudgetPaceInfo, getEarliestDataDate } from '../js/burn-rate.js';
 
 // Pin today to April 28, 2026 (Tuesday)
 beforeEach(() => {
@@ -203,5 +203,46 @@ describe('getBudgetPaceInfo', () => {
         // dailyRate = 10000/30, remaining = 10000/30 * 7 ≈ 2333
         const result = getBudgetPaceInfo(10000, 30, 2334, 1, null);
         expect(result.text).toMatch(/~1 week of budget remaining/);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// getEarliestDataDate
+// ---------------------------------------------------------------------------
+
+describe('getEarliestDataDate', () => {
+    it('returns null for empty consultants array', () => {
+        expect(getEarliestDataDate([])).toBeNull();
+    });
+
+    it('returns null when no consultant has weeklyHours', () => {
+        expect(getEarliestDataDate([{ weeklyHours: {} }])).toBeNull();
+    });
+
+    it('returns the start date of the earliest week key across all consultants', () => {
+        const consultants = [
+            { weeklyHours: { '2026-04-W4': 10, '2026-06-W1': 8 } },
+            { weeklyHours: { '2026-01-W1': 5 } },
+        ];
+        const result = getEarliestDataDate(consultants);
+        // 2026-01-W1 → Jan 1, 2026 (week-of-month scheme: W1 = days 1–7)
+        expect(result).toEqual(new Date(2026, 0, 1));
+    });
+
+    it('handles a single consultant with one week key', () => {
+        const consultants = [{ weeklyHours: { '2026-04-W4': 40 } }];
+        const result = getEarliestDataDate(consultants);
+        expect(result).toBeInstanceOf(Date);
+        expect(isNaN(result.getTime())).toBe(false);
+    });
+
+    it('picks the earlier of actuals vs forecast week keys', () => {
+        // actuals start Jan, forecast starts Apr — min should be Jan
+        const consultants = [
+            { weeklyHours: { '2026-01-W1': 40, '2026-04-W1': 40 } },
+        ];
+        const result = getEarliestDataDate(consultants);
+        // 2026-01-W1 → Jan 1, 2026
+        expect(result).toEqual(new Date(2026, 0, 1));
     });
 });
