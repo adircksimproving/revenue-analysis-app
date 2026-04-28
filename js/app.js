@@ -27,8 +27,8 @@ if (!projectId) {
     state.projectId = parseInt(projectId, 10);
     api.getProject(state.projectId)
         .then(project => {
+            populateFromProject(project);
             if (project.consultants.length > 0) {
-                populateFromProject(project);
                 enableExportButton();
             }
         })
