@@ -20,6 +20,9 @@ beforeEach(() => {
         <div id="metricForecast"></div>
         <canvas id="revenueChart"></canvas>
         <span id="chartQuarterLabel"></span>
+        <div id="burnRateValue"></div>
+        <div id="burnRatePeriodLabel"></div>
+        <div id="burnRatePace"></div>
     `;
 
     state.consultantsData = [];

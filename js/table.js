@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { getQuarterWeeks, isWeekFuture, isWeekOnOrAfterProjectStart } from './date-utils.js';
+import { getQuarterWeeks, isWeekFuture, isWeekOnOrAfterProjectStart, weekKeyToStartDate, weekKeyToEndDate, snapToMonday } from './date-utils.js';
 import { updateFinancialSummary } from './metrics.js';
 
 export function updateQuarterDisplay() {
@@ -91,10 +91,21 @@ export function renderTable(consultants, weeks) {
 
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     weeks.forEach(week => {
-        const match = week.match(/(\d{4})-(\d{2})-W(\d+)/);
-        const display = match
-            ? `${monthNames[parseInt(match[2]) - 1]} ${(parseInt(match[3]) - 1) * 7 + 1}`
-            : week.substring(5);
+        const startDate = weekKeyToStartDate(week);
+        const endDate = weekKeyToEndDate(week);
+        let display;
+        if (startDate && endDate) {
+            // Find the Monday that falls within this block's date range.
+            // snapToMonday(start) gives the Monday of the week containing start —
+            // if that's before the block, advance one week to get the next Monday.
+            const mon = snapToMonday(startDate);
+            const mondayInBlock = mon >= startDate ? mon : new Date(mon.getTime() + 7 * 24 * 60 * 60 * 1000);
+            // Stub weeks (e.g. Apr 29–30) have no Monday inside them; show actual start date.
+            const target = mondayInBlock <= endDate ? mondayInBlock : startDate;
+            display = `${monthNames[target.getMonth()]} ${target.getDate()}`;
+        } else {
+            display = week.substring(5);
+        }
         headerHTML += `<th class="week-header">${display}</th>`;
     });
 

@@ -8,4 +8,7 @@ export const state = {
     startDate: null,
     endDate: null,
     chartType: 'burnup',
+    burnRateTimeframe: 'month',
+    burnRateCustomStart: null,
+    burnRateCustomEnd: null,
 };

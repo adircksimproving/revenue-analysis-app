@@ -18,6 +18,8 @@ import {
     weekKeyToStartDate,
     weekKeyToEndDate,
     formatDateISO,
+    snapToMonday,
+    parseLocalDate,
 } from '../js/date-utils.js';
 
 // Pin "today" to April 22, 2026 (mid Q2) for all time-sensitive tests
@@ -299,6 +301,58 @@ describe('isWeekWithinProjectDates', () => {
     it('returns true when only startDate is set and week is after it', () => {
         state.startDate = '2026-04-01';
         expect(isWeekWithinProjectDates('2026-06-W1')).toBe(true);
+    });
+});
+
+// ── snapToMonday ─────────────────────────────────────────────────────────────
+
+describe('snapToMonday', () => {
+    it('returns the same date when input is already a Monday', () => {
+        // Apr 27 2026 is a Monday
+        const result = snapToMonday(new Date(2026, 3, 27));
+        expect(result.getDate()).toBe(27);
+        expect(result.getDay()).toBe(1);
+    });
+
+    it('snaps Tuesday back to Monday', () => {
+        // Apr 28 2026 is Tuesday → snaps to Apr 27
+        const result = snapToMonday(new Date(2026, 3, 28));
+        expect(result.getDate()).toBe(27);
+    });
+
+    it('snaps Sunday back to the previous Monday', () => {
+        // May 3 2026 is Sunday → snaps to Apr 27
+        const result = snapToMonday(new Date(2026, 4, 3));
+        expect(result.getDate()).toBe(27);
+        expect(result.getMonth()).toBe(3); // April
+    });
+
+    it('snaps Saturday back to Monday', () => {
+        // May 2 2026 is Saturday → snaps to Apr 27
+        const result = snapToMonday(new Date(2026, 4, 2));
+        expect(result.getDate()).toBe(27);
+    });
+
+    it('returns midnight on the resulting Monday', () => {
+        const result = snapToMonday(new Date(2026, 3, 28, 15, 30));
+        expect(result.getHours()).toBe(0);
+        expect(result.getMinutes()).toBe(0);
+    });
+});
+
+// ── parseLocalDate ────────────────────────────────────────────────────────────
+
+describe('parseLocalDate', () => {
+    it('parses YYYY-MM-DD as local date with no timezone shift', () => {
+        const d = parseLocalDate('2026-06-01');
+        expect(d.getFullYear()).toBe(2026);
+        expect(d.getMonth()).toBe(5);  // June
+        expect(d.getDate()).toBe(1);
+    });
+
+    it('produces midnight local time', () => {
+        const d = parseLocalDate('2026-01-15');
+        expect(d.getHours()).toBe(0);
     });
 });
 

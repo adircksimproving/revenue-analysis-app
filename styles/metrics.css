@@ -29,7 +29,7 @@
 
 .financial-summary {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
     margin-bottom: 2rem;
 }
@@ -157,4 +157,84 @@
 
 .budget-tooltip-icon:hover::after {
     opacity: 1;
+}
+
+.financial-card.burn-rate {
+    border-left: 4px solid #d97706;
+    background: #fffbeb;
+}
+
+.burn-rate-controls {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.burn-rate-select {
+    font-size: 12px;
+    font-family: inherit;
+    color: #374151;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 0.25rem 0.4rem;
+    cursor: pointer;
+    outline: none;
+    width: 100%;
+}
+
+.burn-rate-select:focus {
+    border-color: #d97706;
+}
+
+.burn-rate-custom {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.burn-rate-date-input {
+    font-size: 11px;
+    font-family: inherit;
+    color: #374151;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 0.2rem 0.3rem;
+    outline: none;
+    flex: 1;
+    min-width: 0;
+}
+
+.burn-rate-date-input:focus {
+    border-color: #d97706;
+}
+
+.burn-rate-dash {
+    font-size: 12px;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+.burn-rate-period {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 0.4rem;
+    letter-spacing: 0.02em;
+}
+
+.burn-rate-pace {
+    font-size: 12px;
+    margin-top: 0.25rem;
+    font-weight: 500;
+    min-height: 1em;
+}
+
+.burn-rate-pace.good {
+    color: #059669;
+}
+
+.burn-rate-pace.over {
+    color: #dc2626;
 }

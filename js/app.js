@@ -1,6 +1,6 @@
 import { state } from './state.js';
-import { setCurrentQuarter } from './date-utils.js';
-import { updateFinancialSummary } from './metrics.js';
+import { setCurrentQuarter, snapToMonday, parseLocalDate, formatDateISO } from './date-utils.js';
+import { updateFinancialSummary, updateBurnRate } from './metrics.js';
 import { initUpload } from './upload.js';
 import { openForecastModal, initModal } from './modal.js';
 import { api } from './api.js';
@@ -74,6 +74,31 @@ function enableExportButton() {
 document.getElementById('btnExportPDF').addEventListener('click', () => {
     generateProjectPDF(state.projectName || 'Project', state)
         .catch(err => console.error('PDF export failed:', err));
+});
+
+document.getElementById('burnRateTimeframe').addEventListener('change', (e) => {
+    state.burnRateTimeframe = e.target.value;
+    document.getElementById('burnRateCustomRange').hidden = e.target.value !== 'custom';
+    updateBurnRate();
+});
+
+document.getElementById('burnRateStart').addEventListener('change', (e) => {
+    if (e.target.value) {
+        const monday = snapToMonday(parseLocalDate(e.target.value));
+        e.target.value = formatDateISO(monday);
+    }
+    state.burnRateCustomStart = e.target.value;
+    updateBurnRate();
+});
+
+document.getElementById('burnRateEnd').addEventListener('change', (e) => {
+    if (e.target.value) {
+        const monday = snapToMonday(parseLocalDate(e.target.value));
+        const sunday = new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000);
+        e.target.value = formatDateISO(sunday);
+    }
+    state.burnRateCustomEnd = e.target.value;
+    updateBurnRate();
 });
 
 // Required: openForecastModal is called from inline onclick attributes in table rows

@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { isWeekFuture, isWeekOnOrAfterProjectStart } from './date-utils.js';
 import { renderChart } from './chart.js';
+import { calculateBurnRate, getBurnRatePeriod, getBudgetPaceInfo } from './burn-rate.js';
 
 export function updateFinancialSummary() {
     const forecastedRevenue = state.consultantsData.reduce((sum, c) => {
@@ -20,6 +21,32 @@ export function updateFinancialSummary() {
     varianceEl.className = 'financial-value' + (variance < 0 ? ' negative' : variance > 0 ? ' positive' : '');
 
     renderChart();
+    updateBurnRate();
+}
+
+export function updateBurnRate() {
+    const timeframe = state.burnRateTimeframe || 'month';
+    const { start, end, label } = getBurnRatePeriod(
+        timeframe,
+        state.burnRateCustomStart,
+        state.burnRateCustomEnd
+    );
+
+    const windowDays = Math.round((end - start) / (24 * 60 * 60 * 1000)) + 1;
+    const burnRate = calculateBurnRate(start, end, state.consultantsData);
+
+    document.getElementById('burnRateValue').textContent = '$' + Math.round(burnRate).toLocaleString();
+    document.getElementById('burnRatePeriodLabel').textContent = label;
+
+    const paceInfo = getBudgetPaceInfo(burnRate, windowDays, state.budgetValue, state.actualsValue, state.endDate);
+    const paceEl = document.getElementById('burnRatePace');
+    if (paceInfo) {
+        paceEl.textContent = paceInfo.text;
+        paceEl.className = 'burn-rate-pace ' + paceInfo.status;
+    } else {
+        paceEl.textContent = '';
+        paceEl.className = 'burn-rate-pace';
+    }
 }
 
 export function updateMetrics() {
