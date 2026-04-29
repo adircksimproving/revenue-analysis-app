@@ -123,6 +123,36 @@ describe('updateFinancialSummary', () => {
     });
 });
 
+// Fake time is April 22 2026 (Wed). thisMonday = April 20.
+// "month" window = April 20 – May 17. Week '2026-05-W1' (May 1–7) starts within window → fully counted.
+describe('burn rate recalculates on forecast change', () => {
+    it('reflects forecast hours when a future week falls within the burn rate window', () => {
+        state.consultantsData = [{ rate: 100, billedTotal: 0, weeklyHours: { '2026-05-W1': 40 } }];
+        updateFinancialSummary();
+        expect(document.getElementById('burnRateValue').textContent).toBe('$4,000');
+    });
+
+    it('updates when forecast hours change', () => {
+        state.consultantsData = [{ rate: 100, billedTotal: 0, weeklyHours: { '2026-05-W1': 40 } }];
+        updateFinancialSummary();
+        expect(document.getElementById('burnRateValue').textContent).toBe('$4,000');
+
+        state.consultantsData[0].weeklyHours['2026-05-W1'] = 20;
+        updateFinancialSummary();
+        expect(document.getElementById('burnRateValue').textContent).toBe('$2,000');
+    });
+
+    it('resets to $0 when forecast hours are removed', () => {
+        state.consultantsData = [{ rate: 100, billedTotal: 0, weeklyHours: { '2026-05-W1': 40 } }];
+        updateFinancialSummary();
+        expect(document.getElementById('burnRateValue').textContent).toBe('$4,000');
+
+        delete state.consultantsData[0].weeklyHours['2026-05-W1'];
+        updateFinancialSummary();
+        expect(document.getElementById('burnRateValue').textContent).toBe('$0');
+    });
+});
+
 describe('updateMetrics', () => {
     it('writes consultant count, total hours, and total billed to the DOM', () => {
         state.consultantsData = [

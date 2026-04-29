@@ -93,24 +93,32 @@ describe('calculateBurnRate', () => {
         expect(calculateBurnRate(start, end, consultants)).toBeCloseTo(4000, 0);
     });
 
-    it('prorates a week that partially overlaps the range start', () => {
-        // Week 2026-04-W4: Apr 22–28 (7 days). Range starts Apr 26.
-        // Overlap: Apr 26–28 = 3 days → 3/7 of week hours
-        const consultants = [{ rate: 100, weeklyHours: { '2026-04-W4': 70 } }];  // 10 hrs/day
+    it('excludes a week whose start falls before the range start', () => {
+        // Week 2026-04-W4: starts Apr 22. Range starts Apr 26.
+        // Week start (Apr 22) < range start (Apr 26) → excluded entirely.
+        const consultants = [{ rate: 100, weeklyHours: { '2026-04-W4': 70 } }];
         const start = new Date(2026, 3, 26);
         const end = new Date(2026, 3, 28);
-        const expected = 70 * (3 / 7) * 100;
-        expect(calculateBurnRate(start, end, consultants)).toBeCloseTo(expected, 1);
+        expect(calculateBurnRate(start, end, consultants)).toBe(0);
     });
 
-    it('prorates a week that partially overlaps the range end', () => {
-        // Week 2026-05-W1: May 1–7. Range ends May 3.
-        // Overlap: May 1–3 = 3 days → 3/7 of week hours
+    it('includes full hours for a week that starts within the range, even if it extends past the end', () => {
+        // Week 2026-05-W1: starts May 1, ends May 7. Range ends May 3.
+        // Week start (May 1) is within range → full hours counted, no proration.
         const consultants = [{ rate: 100, weeklyHours: { '2026-05-W1': 70 } }];
         const start = new Date(2026, 4, 1);
         const end = new Date(2026, 4, 3);
-        const expected = 70 * (3 / 7) * 100;
-        expect(calculateBurnRate(start, end, consultants)).toBeCloseTo(expected, 1);
+        expect(calculateBurnRate(start, end, consultants)).toBe(7000);
+    });
+
+    it('does not change when end date is extended within an already-counted week', () => {
+        // Week 2026-05-W1: starts May 1. Both windows include this start date.
+        // Extending from May 3 to May 6 should not change the burn rate.
+        const consultants = [{ rate: 100, weeklyHours: { '2026-05-W1': 40 } }];
+        const start = new Date(2026, 4, 1);
+        const endA = new Date(2026, 4, 3);
+        const endB = new Date(2026, 4, 6);
+        expect(calculateBurnRate(start, endA, consultants)).toBe(calculateBurnRate(start, endB, consultants));
     });
 
     it('sums across multiple consultants', () => {
