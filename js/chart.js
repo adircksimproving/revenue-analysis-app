@@ -142,7 +142,7 @@ export function buildBurndownData(consultantsData, budgetValue) {
 function buildDatasets(actualsData, forecastData, budgetData, isBurndown, budgetValue) {
     const datasets = [
         {
-            label: isBurndown ? 'Actuals Remaining' : 'Actuals',
+            label: 'Actual',
             data: actualsData,
             borderColor: '#059669',
             backgroundColor: 'rgba(5,150,105,0.08)',
@@ -154,7 +154,7 @@ function buildDatasets(actualsData, forecastData, budgetData, isBurndown, budget
             spanGaps: false,
         },
         {
-            label: isBurndown ? 'Forecast Remaining' : 'Forecast',
+            label: 'Forecast',
             data: forecastData,
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59,130,246,0.08)',
@@ -170,7 +170,7 @@ function buildDatasets(actualsData, forecastData, budgetData, isBurndown, budget
 
     if (budgetValue > 0) {
         datasets.push({
-            label: isBurndown ? 'Budget Exhausted' : 'Budget',
+            label: 'Budget',
             data: budgetData,
             borderColor: '#9ca3af',
             borderWidth: 1.5,
