@@ -1,4 +1,4 @@
-import { buildChartData, buildChartImageForExport } from './chart.js';
+import { buildChartData, buildBurndownData, buildChartImageForExport } from './chart.js';
 import { isWeekFuture } from './date-utils.js';
 
 function weekKeyToDate(weekKey) {
@@ -32,6 +32,34 @@ export function findBudgetIntersection(weeks, labels, forecastData, budgetValue)
                     date: intersectDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
                 };
             }
+        }
+
+        prevVal = val;
+        prevIdx = i;
+    }
+
+    return null;
+}
+
+// Pure function: finds where the burn-down forecast line first crosses 0.
+// Returns { weekLabel, date } or null if no crossing exists.
+export function findBurndownIntersection(weeks, labels, forecastData) {
+    let prevVal = null;
+    let prevIdx = -1;
+
+    for (let i = 0; i < forecastData.length; i++) {
+        const val = forecastData[i];
+        if (val === null || val === undefined) continue;
+
+        if (prevVal !== null && prevVal > 0 && val <= 0) {
+            const frac = prevVal / (prevVal - val);
+            const prevDate = weekKeyToDate(weeks[prevIdx]);
+            const currDate = weekKeyToDate(weeks[i]);
+            const intersectDate = new Date(prevDate.getTime() + frac * (currDate.getTime() - prevDate.getTime()));
+            return {
+                weekLabel: labels[i],
+                date: intersectDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            };
         }
 
         prevVal = val;
@@ -150,10 +178,16 @@ export async function generateProjectPDF(projectName, state) {
     doc.addImage(chartImg, 'PNG', margin, y, contentWidth, chartH);
     y += chartH + 12;
 
-    // ── INTERSECTION CALLOUT (burn-up only) ──────────────────────────────────
-    if (state.budgetValue > 0 && state.chartType !== 'burndown') {
-        const { periods, labels, forecastData } = buildChartData(state.consultantsData, state.budgetValue);
-        const intersection = findBudgetIntersection(periods, labels, forecastData, state.budgetValue);
+    // ── INTERSECTION CALLOUT ─────────────────────────────────────────────────
+    if (state.budgetValue > 0) {
+        let intersection = null;
+        if (state.chartType === 'burndown') {
+            const { periods, labels, forecastData } = buildBurndownData(state.consultantsData, state.budgetValue);
+            intersection = findBurndownIntersection(periods, labels, forecastData);
+        } else {
+            const { periods, labels, forecastData } = buildChartData(state.consultantsData, state.budgetValue);
+            intersection = findBudgetIntersection(periods, labels, forecastData, state.budgetValue);
+        }
         if (intersection) {
             doc.setFillColor(235, 244, 251);
             doc.setDrawColor(0, 85, 150);

@@ -23,6 +23,8 @@ beforeEach(() => {
         <div id="burnRateValue"></div>
         <div id="burnRatePeriodLabel"></div>
         <div id="burnRatePace"></div>
+        <input id="burnRateStart" type="date" />
+        <input id="burnRateEnd" type="date" />
     `;
 
     state.consultantsData = [];
