@@ -38,16 +38,11 @@ export function calculateBurnRate(startDate, endDate, consultantsData) {
         for (const [weekKey, hours] of Object.entries(consultant.weeklyHours)) {
             if (!hours) continue;
             const weekStart = weekKeyToStartDate(weekKey);
-            const weekEnd = weekKeyToEndDate(weekKey);
-            if (!weekStart || !weekEnd) continue;
-            if (weekStart > endDate || weekEnd < startDate) continue;
-
-            const overlapStart = weekStart < startDate ? startDate : weekStart;
-            const overlapEnd = weekEnd > endDate ? endDate : weekEnd;
-            const overlapDays = (overlapEnd - overlapStart) / MS_PER_DAY + 1;
-            const weekTotalDays = (weekEnd - weekStart) / MS_PER_DAY + 1;
-
-            total += hours * (overlapDays / weekTotalDays) * consultant.rate;
+            if (!weekStart) continue;
+            // Include a week's full hours only if it starts within the window.
+            // No proration — the window end is a lookahead cutoff, not a denominator.
+            if (weekStart < startDate || weekStart > endDate) continue;
+            total += hours * consultant.rate;
         }
     }
     return total;
