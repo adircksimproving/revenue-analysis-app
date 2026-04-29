@@ -18,10 +18,8 @@ export function getBurnRatePeriod(timeframe, customStart, customEnd) {
             end = new Date(thisMonday.getTime() + 13 * MS_PER_DAY);
             break;
         case 'custom':
-            start = customStart ? snapToMonday(parseLocalDate(customStart)) : thisMonday;
-            end = customEnd
-                ? new Date(snapToMonday(parseLocalDate(customEnd)).getTime() + 6 * MS_PER_DAY)
-                : new Date(thisMonday.getTime() + 6 * MS_PER_DAY);
+            start = customStart ? parseLocalDate(customStart) : thisMonday;
+            end = customEnd ? parseLocalDate(customEnd) : new Date(thisMonday.getTime() + 6 * MS_PER_DAY);
             break;
         default: // month — 4 full weeks
             start = thisMonday;

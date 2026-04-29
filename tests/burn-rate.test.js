@@ -35,17 +35,16 @@ describe('getBurnRatePeriod', () => {
         expect(end).toEqual(new Date(2026, 4, 24));
     });
 
-    it('custom: snaps start to Monday and end to Sunday of that week', () => {
-        // Jun 3 is Wednesday → snaps to Mon Jun 1; Jun 10 is Wednesday → Mon Jun 8 + 6 = Sun Jun 14
+    it('custom: uses exact user-selected start and end dates without snapping', () => {
         const { start, end } = getBurnRatePeriod('custom', '2026-06-03', '2026-06-10');
-        expect(start).toEqual(new Date(2026, 5, 1));   // Mon Jun 1
-        expect(end).toEqual(new Date(2026, 5, 14));    // Sun Jun 14
+        expect(start).toEqual(new Date(2026, 5, 3));   // Wed Jun 3
+        expect(end).toEqual(new Date(2026, 5, 10));    // Wed Jun 10
     });
 
-    it('custom: a Monday start is unchanged', () => {
-        // Jun 1 2026 is a Monday
-        const { start } = getBurnRatePeriod('custom', '2026-06-01', '2026-06-07');
-        expect(start).toEqual(new Date(2026, 5, 1));
+    it('custom: a Monday start and Sunday end are returned as-is', () => {
+        const { start, end } = getBurnRatePeriod('custom', '2026-06-01', '2026-06-07');
+        expect(start).toEqual(new Date(2026, 5, 1));   // Mon Jun 1
+        expect(end).toEqual(new Date(2026, 5, 7));     // Sun Jun 7
     });
 
     it('custom with no dates falls back to this Monday–Sunday', () => {
