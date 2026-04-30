@@ -52,7 +52,8 @@ export function applySchema(db) {
     `);
 }
 
-const db = new Database(join(__dirname, '../data.db'));
+const dbPath = process.env.DB_PATH || join(__dirname, '../data.db');
+const db = new Database(dbPath);
 applySchema(db);
 
 db.prepare('INSERT OR IGNORE INTO users (email, name, role) VALUES (?, ?, ?)').run(

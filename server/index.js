@@ -19,5 +19,5 @@ app.use('/api/consultants', consultantsRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Revenue Analysis running at http://localhost:${PORT}`);
+    console.log(`Revenue Analysis running on port ${PORT}`);
 });
