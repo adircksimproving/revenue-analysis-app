@@ -82,6 +82,9 @@ Key files to read before making broad changes:
 - Branch naming: `feature/short-description` or `fix/short-description`
 - Commit messages: short, present-tense (e.g. "Add consultant search filter")
 
+## Hosting
+- This app is hosted on Railway. Production URL: https://revenue-analysis-app-production.up.railway.app/
+
 ---
 
 ## Notes for Claude
