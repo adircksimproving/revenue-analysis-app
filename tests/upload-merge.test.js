@@ -16,7 +16,7 @@ function getConsultant(db, projectId, name) {
 }
 
 function getHours(db, consultantId) {
-    return db.prepare('SELECT week_key, hours FROM weekly_hours WHERE consultant_id = ?').all(consultantId);
+    return db.prepare('SELECT week_key, hours, from_csv FROM weekly_hours WHERE consultant_id = ?').all(consultantId);
 }
 
 // ── mergeConsultants ──────────────────────────────────────────────────────────
@@ -115,5 +115,27 @@ describe('mergeConsultants — project isolation', () => {
         mergeConsultants(db, 2, [{ name: 'Alice', rate: 200, billedTotal: 0, weeklyHours: {} }]);
         expect(getConsultant(db, 1, 'Alice').rate).toBe(100);
         expect(getConsultant(db, 2, 'Alice').rate).toBe(200);
+    });
+});
+
+// ── mergeConsultants — from_csv flag ──────────────────────────────────────────
+
+describe('mergeConsultants — from_csv flag', () => {
+    let db;
+    beforeEach(() => { db = makeDb(); });
+
+    it('sets from_csv=1 on all uploaded weekly_hours rows', () => {
+        mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 0, weeklyHours: { '2026-04-W1': 40 } }]);
+        const { id } = getConsultant(db, 1, 'Alice');
+        const row = getHours(db, id).find(h => h.week_key === '2026-04-W1');
+        expect(row.from_csv).toBe(1);
+    });
+
+    it('sets from_csv=1 on a second upload that targets the same week', () => {
+        mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 0, weeklyHours: { '2026-04-W1': 20 } }]);
+        mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 0, weeklyHours: { '2026-04-W1': 15 } }]);
+        const { id } = getConsultant(db, 1, 'Alice');
+        const row = getHours(db, id).find(h => h.week_key === '2026-04-W1');
+        expect(row.from_csv).toBe(1);
     });
 });

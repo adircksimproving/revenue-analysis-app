@@ -20,6 +20,9 @@ import {
     formatDateISO,
     snapToMonday,
     parseLocalDate,
+    getMondayForWeekKey,
+    getCurrentWeekMonday,
+    mergeWeeksByMonday,
 } from '../js/date-utils.js';
 
 // Pin "today" to April 22, 2026 (mid Q2) for all time-sensitive tests
@@ -353,6 +356,115 @@ describe('parseLocalDate', () => {
     it('produces midnight local time', () => {
         const d = parseLocalDate('2026-01-15');
         expect(d.getHours()).toBe(0);
+    });
+});
+
+// ── getMondayForWeekKey ───────────────────────────────────────────────────────
+// Fake time is April 22, 2026
+
+describe('getMondayForWeekKey', () => {
+    it('returns null for a malformed key', () => {
+        expect(getMondayForWeekKey('bad-key')).toBeNull();
+    });
+
+    it('returns the Monday inside a full week block', () => {
+        // 2026-04-W2: Apr 8–14. snapToMonday(Apr 8 Wed) = Apr 6 < Apr 8,
+        // so mondayInBlock = Apr 13.
+        const monday = getMondayForWeekKey('2026-04-W2');
+        expect(monday.getDate()).toBe(13);
+        expect(monday.getMonth()).toBe(3); // April
+    });
+
+    it('returns May 4 for Apr W5 (Apr 29–May 5) — the Monday inside the block', () => {
+        const monday = getMondayForWeekKey('2026-04-W5');
+        expect(monday.getDate()).toBe(4);
+        expect(monday.getMonth()).toBe(4); // May
+    });
+
+    it('returns May 4 for May W1 (May 1–7) — same Monday as Apr W5', () => {
+        const monday = getMondayForWeekKey('2026-05-W1');
+        expect(monday.getDate()).toBe(4);
+        expect(monday.getMonth()).toBe(4); // May
+    });
+
+    it('returns Jun 1 for May W5 (May 29–Jun 4)', () => {
+        const monday = getMondayForWeekKey('2026-05-W5');
+        expect(monday.getDate()).toBe(1);
+        expect(monday.getMonth()).toBe(5); // June
+    });
+
+    it('returns Jun 1 for Jun W1 (Jun 1–7) — same Monday as May W5', () => {
+        const monday = getMondayForWeekKey('2026-06-W1');
+        expect(monday.getDate()).toBe(1);
+        expect(monday.getMonth()).toBe(5); // June
+    });
+});
+
+// ── getCurrentWeekMonday ──────────────────────────────────────────────────────
+// Fake time is April 22, 2026 (a Wednesday)
+
+describe('getCurrentWeekMonday', () => {
+    it('returns the Monday of the current week', () => {
+        // Apr 22 2026 is Wednesday → snaps to Apr 20 (Monday)
+        const monday = getCurrentWeekMonday();
+        expect(monday.getDate()).toBe(20);
+        expect(monday.getMonth()).toBe(3); // April
+        expect(monday.getDay()).toBe(1);
+    });
+
+    it('returns midnight on the Monday', () => {
+        const monday = getCurrentWeekMonday();
+        expect(monday.getHours()).toBe(0);
+        expect(monday.getMinutes()).toBe(0);
+    });
+});
+
+// ── mergeWeeksByMonday ────────────────────────────────────────────────────────
+
+describe('mergeWeeksByMonday', () => {
+    it('returns an empty array for empty input', () => {
+        expect(mergeWeeksByMonday([])).toEqual([]);
+    });
+
+    it('merges Apr W5 and May W1 into one group (both display May 4)', () => {
+        const groups = mergeWeeksByMonday(['2026-04-W5', '2026-05-W1']);
+        expect(groups).toHaveLength(1);
+        expect(groups[0].keys).toEqual(['2026-04-W5', '2026-05-W1']);
+        expect(groups[0].monday.getDate()).toBe(4);
+        expect(groups[0].monday.getMonth()).toBe(4); // May
+    });
+
+    it('merges May W5 and Jun W1 into one group (both display Jun 1)', () => {
+        const groups = mergeWeeksByMonday(['2026-05-W5', '2026-06-W1']);
+        expect(groups).toHaveLength(1);
+        expect(groups[0].keys).toEqual(['2026-05-W5', '2026-06-W1']);
+    });
+
+    it('does not merge weeks with distinct Mondays', () => {
+        const groups = mergeWeeksByMonday(['2026-04-W1', '2026-04-W2', '2026-04-W3']);
+        expect(groups).toHaveLength(3);
+        groups.forEach(g => expect(g.keys).toHaveLength(1));
+    });
+
+    it('produces fewer columns than raw week keys when duplicates exist in Q2', () => {
+        const rawWeeks = getQuarterWeeks(2026, 2);
+        const groups = mergeWeeksByMonday(rawWeeks);
+        // Q2 has 15 raw week keys but 2 duplicated Mondays → 13 unique columns
+        expect(groups.length).toBeLessThan(rawWeeks.length);
+        expect(groups).toHaveLength(13);
+    });
+
+    it('preserves order — earlier keys appear first in each group', () => {
+        const groups = mergeWeeksByMonday(['2026-04-W5', '2026-05-W1', '2026-05-W2']);
+        expect(groups[0].keys[0]).toBe('2026-04-W5');
+        expect(groups[0].keys[1]).toBe('2026-05-W1');
+        expect(groups[1].keys[0]).toBe('2026-05-W2');
+    });
+
+    it('canonical key (last in group) is 2026-05-W1 for the May 4 merge', () => {
+        const groups = mergeWeeksByMonday(['2026-04-W5', '2026-05-W1']);
+        const canonical = groups[0].keys[groups[0].keys.length - 1];
+        expect(canonical).toBe('2026-05-W1');
     });
 });
 

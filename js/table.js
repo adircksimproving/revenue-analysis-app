@@ -1,6 +1,7 @@
 import { state } from './state.js';
-import { getQuarterWeeks, isWeekFuture, isWeekOnOrAfterProjectStart, weekKeyToStartDate, weekKeyToEndDate, snapToMonday } from './date-utils.js';
+import { getQuarterWeeks, isWeekFuture, isWeekOnOrAfterProjectStart, mergeWeeksByMonday, getCurrentWeekMonday, formatDateISO } from './date-utils.js';
 import { updateFinancialSummary } from './metrics.js';
+import { api } from './api.js';
 
 export function updateQuarterDisplay() {
     if (state.consultantsData.length > 0) {
@@ -70,10 +71,13 @@ export function renderTable(consultants, weeks) {
     const tableBody = document.getElementById('tableBody');
 
     const quarterLabel = `Q${state.currentQuarter.quarter} ${state.currentQuarter.year}`;
+    const weekGroups = mergeWeeksByMonday(weeks);
+    const todayMondayISO = formatDateISO(getCurrentWeekMonday());
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
     let headerHTML = '<tr>';
     headerHTML += '<th colspan="5"></th>';
-    headerHTML += `<th colspan="${weeks.length}" class="quarter-nav-cell">`;
+    headerHTML += `<th colspan="${weekGroups.length}" class="quarter-nav-cell">`;
     headerHTML += '<div class="quarter-nav-content">';
     headerHTML += '<button id="prevQuarter" class="quarter-btn">← Prev</button>';
     headerHTML += `<span class="quarter-label">${quarterLabel}</span>`;
@@ -89,22 +93,12 @@ export function renderTable(consultants, weeks) {
     headerHTML += '<th class="actual-col">Amount Billed to Date</th>';
     headerHTML += '<th class="forecast-col">Forecast Hours</th>';
 
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    weeks.forEach(week => {
-        const startDate = weekKeyToStartDate(week);
-        const endDate = weekKeyToEndDate(week);
+    weekGroups.forEach(group => {
         let display;
-        if (startDate && endDate) {
-            // Find the Monday that falls within this block's date range.
-            // snapToMonday(start) gives the Monday of the week containing start —
-            // if that's before the block, advance one week to get the next Monday.
-            const mon = snapToMonday(startDate);
-            const mondayInBlock = mon >= startDate ? mon : new Date(mon.getTime() + 7 * 24 * 60 * 60 * 1000);
-            // Stub weeks (e.g. Apr 29–30) have no Monday inside them; show actual start date.
-            const target = mondayInBlock <= endDate ? mondayInBlock : startDate;
-            display = `${monthNames[target.getMonth()]} ${target.getDate()}`;
+        if (group.monday) {
+            display = `${monthNames[group.monday.getMonth()]} ${group.monday.getDate()}`;
         } else {
-            display = week.substring(5);
+            display = group.keys[0].substring(5);
         }
         headerHTML += `<th class="week-header">${display}</th>`;
     });
@@ -114,21 +108,37 @@ export function renderTable(consultants, weeks) {
 
     let bodyHTML = '';
     consultants.forEach((consultant, consultantIndex) => {
-        const consultantBilledTotal = consultant.billedTotal;
-
         bodyHTML += '<tr>';
         bodyHTML += `<td class="consultant-name">${consultant.name}</td>`;
         bodyHTML += `<td class="rate">$${Math.round(consultant.rate).toLocaleString()}</td>`;
         bodyHTML += `<td class="hours">${Math.round(consultant.totalHours).toLocaleString()}</td>`;
-        bodyHTML += `<td class="forecast">$${Math.round(consultantBilledTotal).toLocaleString()}</td>`;
+        bodyHTML += `<td class="forecast">$${Math.round(consultant.billedTotal).toLocaleString()}</td>`;
         bodyHTML += `<td><button class="forecast-btn" data-consultant="${consultantIndex}" onclick="openForecastModal(${consultantIndex})">Update Forecast</button></td>`;
 
-        weeks.forEach(week => {
-            const hours = consultant.weeklyHours[week];
-            if (hours && hours > 0) {
-                bodyHTML += `<td class="week-cell actual">${Math.round(hours)}</td>`;
+        weekGroups.forEach(group => {
+            const groupHours = group.keys.reduce((sum, k) => sum + (consultant.weeklyHours[k] || 0), 0);
+            const isCurrentWeek = group.monday && formatDateISO(group.monday) === todayMondayISO;
+            // Canonical key: last key in the group — aligns with how getWeekKey()
+            // assigns dates within the new month (e.g. May 4 → 2026-05-W1).
+            const canonicalKey = group.keys[group.keys.length - 1];
+
+            if (isCurrentWeek) {
+                const hasCsvData = group.keys.some(k => consultant.csvWeekKeys?.includes(k));
+                if (hasCsvData) {
+                    bodyHTML += `<td class="week-cell actual">${Math.round(groupHours)}</td>`;
+                } else {
+                    const displayVal = groupHours > 0 ? Math.round(groupHours) : '';
+                    bodyHTML += `<td class="week-cell${groupHours > 0 ? ' actual' : ' empty'}">` +
+                        `<input type="number" class="week-input" data-consultant="${consultantIndex}" ` +
+                        `data-week="${canonicalKey}" data-current-week="true" ` +
+                        `value="${displayVal}" placeholder="—" min="0" /></td>`;
+                }
+            } else if (groupHours > 0) {
+                bodyHTML += `<td class="week-cell actual">${Math.round(groupHours)}</td>`;
             } else {
-                bodyHTML += `<td class="week-cell empty"><input type="number" class="week-input" data-consultant="${consultantIndex}" data-week="${week}" value="" placeholder="—" min="0" /></td>`;
+                bodyHTML += `<td class="week-cell empty"><input type="number" class="week-input" ` +
+                    `data-consultant="${consultantIndex}" data-week="${canonicalKey}" ` +
+                    `value="" placeholder="—" min="0" /></td>`;
             }
         });
 
@@ -140,20 +150,32 @@ export function renderTable(consultants, weeks) {
     attachQuarterNavListeners();
 
     document.querySelectorAll('.week-input').forEach(input => {
-        input.addEventListener('input', (e) => {
+        input.addEventListener('change', async (e) => {
             const consultantIndex = parseInt(e.target.dataset.consultant);
             const week = e.target.dataset.week;
+            const isCurrentWeek = e.target.dataset.currentWeek === 'true';
             const value = parseFloat(e.target.value) || 0;
+            const consultant = state.consultantsData[consultantIndex];
 
             if (value > 0) {
-                state.consultantsData[consultantIndex].weeklyHours[week] = value;
+                consultant.weeklyHours[week] = value;
                 e.target.parentElement.classList.remove('empty');
                 e.target.parentElement.classList.add('actual');
             } else {
-                delete state.consultantsData[consultantIndex].weeklyHours[week];
+                delete consultant.weeklyHours[week];
+                e.target.parentElement.classList.remove('actual');
+                e.target.parentElement.classList.add('empty');
             }
 
-            if (isWeekFuture(week)) {
+            if (isCurrentWeek && consultant.id) {
+                try {
+                    await api.saveActuals(consultant.id, week, value);
+                } catch (err) {
+                    console.error('Failed to save actuals:', err);
+                }
+            }
+
+            if (isCurrentWeek || isWeekFuture(week)) {
                 updateFinancialSummary();
             }
         });
