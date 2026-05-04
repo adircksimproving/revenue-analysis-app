@@ -1,12 +1,20 @@
 import { state } from './state.js';
-import { isWeekFuture, isWeekOnOrAfterProjectStart } from './date-utils.js';
+import { isWeekFuture, isWeekOnOrAfterProjectStart, getMondayForWeekKey, getCurrentWeekMonday, formatDateISO } from './date-utils.js';
 import { renderChart } from './chart.js';
 import { calculateBurnRate, getBurnRatePeriod, getBudgetPaceInfo, getEarliestDataDate } from './burn-rate.js';
 
 export function updateFinancialSummary() {
+    const currentMondayISO = formatDateISO(getCurrentWeekMonday());
     const forecastedRevenue = state.consultantsData.reduce((sum, c) => {
         const futureHours = Object.entries(c.weeklyHours)
-            .filter(([week]) => isWeekFuture(week) && isWeekOnOrAfterProjectStart(week))
+            .filter(([week]) => {
+                if (!isWeekOnOrAfterProjectStart(week)) return false;
+                if (isWeekFuture(week)) return true;
+                // Manual current-week entries count as forecast (CSV data is actuals)
+                const weekMonday = getMondayForWeekKey(week);
+                const isCurrentWeek = weekMonday && formatDateISO(weekMonday) === currentMondayISO;
+                return isCurrentWeek && !c.csvWeekKeys?.includes(week);
+            })
             .reduce((s, [, hrs]) => s + hrs, 0);
         return sum + c.rate * futureHours;
     }, 0);

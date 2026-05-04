@@ -150,7 +150,9 @@ export function renderTable(consultants, weeks) {
     attachQuarterNavListeners();
 
     document.querySelectorAll('.week-input').forEach(input => {
-        input.addEventListener('change', async (e) => {
+        // Update state and recalculate on every keystroke so the summary tiles
+        // and chart respond immediately as the user types.
+        input.addEventListener('input', (e) => {
             const consultantIndex = parseInt(e.target.dataset.consultant);
             const week = e.target.dataset.week;
             const isCurrentWeek = e.target.dataset.currentWeek === 'true';
@@ -167,16 +169,25 @@ export function renderTable(consultants, weeks) {
                 e.target.parentElement.classList.add('empty');
             }
 
+            if (isCurrentWeek || isWeekFuture(week)) {
+                updateFinancialSummary();
+            }
+        });
+
+        // Persist to the server only when the user finishes editing (on blur).
+        input.addEventListener('change', async (e) => {
+            const consultantIndex = parseInt(e.target.dataset.consultant);
+            const week = e.target.dataset.week;
+            const isCurrentWeek = e.target.dataset.currentWeek === 'true';
+            const value = parseFloat(e.target.value) || 0;
+            const consultant = state.consultantsData[consultantIndex];
+
             if (isCurrentWeek && consultant.id) {
                 try {
                     await api.saveActuals(consultant.id, week, value);
                 } catch (err) {
                     console.error('Failed to save actuals:', err);
                 }
-            }
-
-            if (isCurrentWeek || isWeekFuture(week)) {
-                updateFinancialSummary();
             }
         });
     });
