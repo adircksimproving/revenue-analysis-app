@@ -16,10 +16,11 @@ export function mergeConsultants(database, projectId, incoming) {
     `);
 
     const upsertHours = database.prepare(`
-        INSERT INTO weekly_hours (consultant_id, week_key, hours)
-        VALUES (?, ?, ?)
+        INSERT INTO weekly_hours (consultant_id, week_key, hours, from_csv)
+        VALUES (?, ?, ?, 1)
         ON CONFLICT(consultant_id, week_key) DO UPDATE SET
-            hours = hours + excluded.hours
+            hours    = hours + excluded.hours,
+            from_csv = 1
     `);
 
     const runMerge = database.transaction(() => {

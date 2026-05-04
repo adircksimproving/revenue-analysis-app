@@ -5,10 +5,11 @@ export function loadProject(db, id) {
     if (!project) return null;
 
     const rows = db.prepare('SELECT * FROM consultants WHERE project_id = ?').all(project.id);
-    const getHours = db.prepare('SELECT week_key, hours FROM weekly_hours WHERE consultant_id = ?');
+    const getHours = db.prepare('SELECT week_key, hours, from_csv FROM weekly_hours WHERE consultant_id = ?');
     const consultants = rows.map(c => {
         const hours = getHours.all(c.id);
         const weeklyHours = Object.fromEntries(hours.map(h => [h.week_key, h.hours]));
+        const csvWeekKeys = hours.filter(h => h.from_csv).map(h => h.week_key);
         return {
             id: c.id,
             name: c.name,
@@ -16,6 +17,7 @@ export function loadProject(db, id) {
             forecastHoursPerWeek: c.forecast_hours_per_week,
             billedTotal: c.billed_total,
             weeklyHours,
+            csvWeekKeys,
         };
     });
 

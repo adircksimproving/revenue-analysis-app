@@ -39,6 +39,7 @@ export function applySchema(db) {
             consultant_id INTEGER NOT NULL REFERENCES consultants(id),
             week_key      TEXT    NOT NULL,
             hours         REAL    DEFAULT 0,
+            from_csv      INTEGER DEFAULT 0,
             UNIQUE(consultant_id, week_key)
         );
 
@@ -69,6 +70,9 @@ try { db.exec('ALTER TABLE projects ADD COLUMN client_id INTEGER REFERENCES clie
 // Migration: add start/end dates to projects
 try { db.exec('ALTER TABLE projects ADD COLUMN start_date TEXT DEFAULT NULL'); } catch {}
 try { db.exec('ALTER TABLE projects ADD COLUMN end_date TEXT DEFAULT NULL'); } catch {}
+
+// Migration: track whether weekly hours came from a CSV upload
+try { db.exec('ALTER TABLE weekly_hours ADD COLUMN from_csv INTEGER DEFAULT 0'); } catch {}
 
 // Seed Costco as the default client and assign it to any unassigned projects (AC2.2.1)
 db.prepare('INSERT OR IGNORE INTO clients (user_id, name) VALUES (?, ?)').run(USER_ID, 'Costco');

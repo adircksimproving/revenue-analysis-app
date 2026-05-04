@@ -127,6 +127,49 @@ export function snapToMonday(date) {
     return d;
 }
 
+// Returns the Monday date displayed for a given week key, using the same
+// logic as the table header: the first Monday that falls inside the block,
+// or the block's start date if no Monday fits.
+export function getMondayForWeekKey(weekKey) {
+    const startDate = weekKeyToStartDate(weekKey);
+    const endDate = weekKeyToEndDate(weekKey);
+    if (!startDate || !endDate) return null;
+    const mon = snapToMonday(startDate);
+    const mondayInBlock = mon >= startDate ? mon : new Date(mon.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return mondayInBlock <= endDate ? mondayInBlock : startDate;
+}
+
+// Returns the Monday of the current calendar week (today snapped back to Mon).
+export function getCurrentWeekMonday() {
+    return snapToMonday(new Date());
+}
+
+// Groups an ordered array of week keys by their representative Monday.
+// Returns an array of { monday: Date, keys: string[] } preserving order.
+// Week keys that share the same Monday are merged into one group — this
+// eliminates duplicate column headers at month boundaries.
+export function mergeWeeksByMonday(weeks) {
+    const groups = [];
+    const seen = new Map();
+
+    for (const weekKey of weeks) {
+        const monday = getMondayForWeekKey(weekKey);
+        if (!monday) {
+            groups.push({ monday: null, keys: [weekKey] });
+            continue;
+        }
+        const isoKey = formatDateISO(monday);
+        if (seen.has(isoKey)) {
+            groups[seen.get(isoKey)].keys.push(weekKey);
+        } else {
+            seen.set(isoKey, groups.length);
+            groups.push({ monday, keys: [weekKey] });
+        }
+    }
+
+    return groups;
+}
+
 export function groupWeeksByQuarter(weeks) {
     const quarters = {};
 
