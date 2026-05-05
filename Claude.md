@@ -1,93 +1,269 @@
-# Project: [Revenue Analysis App]
+# Revenue Analysis App
 
-## Overview
-This app allows Delivery Managers to see their current project spend (based on Workday data), forecast project spend, and determine burn rate via a series of inputs and calcs.
+Project financial tracking tool for delivery managers. Imports Workday CSV exports to record consultant hours billed per week, then layers a forecast over actuals to project total spend against a project budget. Outputs a chart with a budget burn line and a PDF export.
 
-## Internal App Ecosystem
+**Production:** https://revenue-analysis-app-production.up.railway.app/
+**GitHub:** https://github.com/adircksimproving/revenue-analysis-app
 
-These three apps share a common auth layer (portal) and serve overlapping users (delivery managers, project managers, consultants). Before changing anything related to routing, authentication, user identity, or shared data — read the relevant files in the repo that owns that concern.
+---
 
-| Repo | Local Path | Role |
-|---|---|---|
-| `portal` | `/Users/austin.dircks/Documents/projects/internal/portal` | Auth and routing hub — handles login and redirects users to other apps |
-| `revenue-analysis-app` | `/Users/austin.dircks/Documents/projects/internal/revenue-analysis-app` | Tracks project financials — billed hours per consultant, project spend forecasting |
-| `consultant-directory-app` | `/Users/austin.dircks/consultant-directory-app` | Search and directory — find consultants and view their work and contact info |
+## App Ecosystem
 
-### How to reference sibling repos
+These three apps share a common auth layer (portal) and serve the same users (delivery managers, project managers). Before changing anything related to auth, routing, user identity, or navigation — check what portal does first.
 
-Start a session with access to one or more sibling repos:
+| Repo | Local Path | Production URL | Role |
+|---|---|---|---|
+| `portal` | `~/Documents/projects/internal/portal-main` | https://portal-production-2c38.up.railway.app/ | Auth hub — login page and app dashboard |
+| `revenue-analysis-app` | `~/Documents/projects/internal/revenue-analysis-app-main` | https://revenue-analysis-app-production.up.railway.app/ | Project financial tracking and forecasting |
+| `consultant-directory-app` | `~/Documents/projects/internal/consultant-directory-app-main` | https://consultant-directory-app-production.up.railway.app/ | Consultant search and profile directory |
+
+### Load sibling repos in a session
+
 ```bash
-claude --add-dir /Users/austin.dircks/Documents/projects/internal/portal
-claude --add-dir /Users/austin.dircks/Documents/projects/internal/portal --add-dir /Users/austin.dircks/Documents/projects/internal/revenue-analysis-app
-```
+claude --add-dir ~/Documents/projects/internal/revenue-analysis-app-main \
+       --add-dir ~/Documents/projects/internal/consultant-directory-app-main
 
-Add a repo mid-session without restarting:
+/add-dir ~/Documents/projects/internal/portal-main
 ```
-/add-dir /Users/austin.dircks/Documents/projects/internal/portal
-```
-
-Or reference a specific file directly by path without any setup:
-"Read /Users/austin.dircks/Documents/projects/internal/portal/auth.js before updating the login flow."
 
 ### Cross-repo rules
 
-- Auth and session handling is owned by `portal`. Before touching anything login-related, read how portal handles auth and follow the same patterns.
-- Consultant identity (IDs, names, contact fields) may appear in both `revenue-analysis-app` and `consultant-directory-app`. If changing a consultant data shape, check both repos for impact.
-- Do NOT modify files in sibling repos unless explicitly asked.
-- If a change here requires a follow-up in another repo, say so at the end of your response: "Follow-up needed in [repo]: [what and where]."
+- Auth is owned by portal. The sign-out button and portal logo use a `BASE_URL` variable in `home.html` — keep this pattern when updating navigation.
+- Consultant name is the shared identity key with `consultant-directory-app`. Both apps have a `consultants` table keyed by `name`. If you change the name format or add an external ID field, check impact in `consultant-directory-app/server/db.js`.
+- Do NOT modify files in sibling repos unless explicitly asked. If a change here requires follow-up elsewhere, say so: "Follow-up needed in [repo]: [what and where]."
 
 ---
 
 ## This Repo: Structure & Key Files
 
 ```
-[fill in your directory structure]
+revenue-analysis-app/
+├── index.html              # Login page (frontend validation only — no real auth)
+├── home.html               # Project list dashboard
+├── account.html            # User profile, client hierarchy view
+├── project.html            # Main analysis workspace: metrics, table, chart
+├── js/
+│   ├── app.js              # Page init and routing logic
+│   ├── api.js              # All fetch calls to /api/* — 8 endpoints, single source of truth
+│   ├── state.js            # Shared mutable state object across modules
+│   ├── csv-parser.js       # Raw CSV text → array of row objects
+│   ├── data-processor.js   # Parsed rows → consultant + weekly hours buckets
+│   ├── upload.js           # Drives the CSV upload flow (parse → process → POST)
+│   ├── modal.js            # Forecast hours-per-week dialog logic
+│   ├── metrics.js          # Actuals, forecast, variance, burn rate calculations
+│   ├── chart.js            # Chart.js rendering, bridge pattern, PDF export via jsPDF
+│   ├── table.js            # Quarterly hours table rendering
+│   └── date-utils.js       # Week key formatting, quarter boundaries
+├── styles/
+│   ├── layout.css          # Page chrome, nav, card grid
+│   ├── upload.css          # Drag-and-drop upload zone
+│   ├── metrics.css         # KPI cards (actuals, forecast, variance, burn rate)
+│   ├── table.css           # Quarterly hours table
+│   ├── chart.css           # Chart container and controls
+│   ├── modal.css           # Forecast modal dialog
+│   └── account.css         # User button, avatar, sign-out button
+├── server/
+│   ├── index.js            # Express entry — middleware, route mounting
+│   ├── db.js               # SQLite schema init, seed data, USER_ID constant
+│   ├── projectLoader.js    # Reusable helper: load project + consultants + hours
+│   └── routes/
+│       ├── projects.js     # CRUD: list, get, create, update, soft-delete, restore
+│       ├── clients.js      # List and create clients
+│       ├── consultants.js  # Set forecast hours-per-week, record manual actuals
+│       └── upload.js       # Merge CSV data into existing project
+├── tests/                  # Vitest unit tests
+└── vitest.config.js
 ```
 
-Key files to read before making broad changes:
-- `[path/to/main entry]` — [what it does]
-- `[path/to/any shared config]` — [what it controls]
+**Read before making changes:**
+- `server/db.js` — owns the full schema and the hardcoded `USER_ID`; all routes use this constant
+- `js/api.js` — owns all client-server contracts; update here whenever a route signature changes
+- `js/state.js` — shared mutable state; understand what's in it before touching any module that reads from it
+- `server/routes/projects.js` — most complex route file; owns soft-delete, restore, and the project data shape
+- `js/chart.js` — owns the actuals/forecast bridge pattern and PDF export; non-obvious rendering logic
 
 ---
 
-## Commands
+## Running Locally
 
 ```bash
-# Run locally
-[e.g. open index.html directly, or: npx live-server]
+npm install        # also rebuilds better-sqlite3 native bindings (postinstall)
+node server/index.js
+# Serves on http://localhost:3000
+# data.db is auto-created in the repo root on first run
 ```
+
+Run tests:
+```bash
+npm test           # vitest one-shot
+npm run test:watch # vitest watch mode
+```
+
+---
+
+## Database Schema
+
+SQLite via `better-sqlite3` (synchronous). File: `data.db` (gitignored, auto-created). Path configurable via `DB_PATH` env var.
+
+**`users`** — account holders
+```
+id, email (unique), name, role
+Seeded: austin.dircks@improving.com (admin)
+```
+
+**`projects`** — consulting engagements
+```
+id, user_id, name, description, budget, client_id, start_date, end_date, deleted_at
+deleted_at IS NULL = active; soft-delete only, never hard-delete rows
+```
+
+**`clients`** — client organizations
+```
+id, user_id, name
+Default "Costco" client exists for legacy records without a client_id
+```
+
+**`consultants`** — billable staff per project
+```
+id, project_id, name, hourly_rate, forecast_hours_per_week, total_billed
+Unique: (project_id, name)
+```
+
+**`weekly_hours`** — time entries per consultant per week
+```
+id, consultant_id, week_key (YYYY-WW format), hours, from_csv (0|1)
+Unique: (consultant_id, week_key)
+```
+
+`from_csv = 1` means the row came from a Workday CSV upload. Manual actuals set `from_csv = 0`. The `PUT /consultants/:id/actuals` endpoint rejects writes to CSV-origin weeks to prevent overwriting imported data.
+
+---
+
+## API Endpoints
+
+All routes under `/api/`. Single hardcoded `USER_ID` (from `db.js`) used by all routes — no per-request auth.
+
+**Projects**
+```
+GET    /api/projects              List active projects (deleted_at IS NULL)
+POST   /api/projects              Create project {name, clientName, description?, budget?, start_date?, end_date?}
+GET    /api/projects/:id          Full project with consultants + weekly_hours
+PUT    /api/projects/:id          Update name, description, budget, dates, client
+DELETE /api/projects/:id          Soft-delete (sets deleted_at)
+POST   /api/projects/:id/restore  Clear deleted_at
+```
+
+**Clients**
+```
+GET  /api/clients     List all clients, alphabetically
+POST /api/clients     Create client {name} — uses INSERT OR IGNORE
+```
+
+**Consultants**
+```
+PUT /api/consultants/:id/forecast  Set forecast_hours_per_week; bulk-writes future weeks as forecast rows
+PUT /api/consultants/:id/actuals   Write manual hours for a single week; rejects if from_csv = 1 for that week
+```
+
+**Upload**
+```
+POST /api/upload/:projectId  Merge consultant CSV data
+  - Upserts consultants (keeps higher hourly_rate on conflict)
+  - Accumulates total_billed
+  - Upserts weekly_hours with from_csv = 1
+  - Expects body: { consultants: [{ name, hourly_rate, total_billed, weeks: { "YYYY-WW": hours } }] }
+```
+
+---
+
+## Data Flow: CSV Upload
+
+1. User drags a Workday CSV onto the upload zone in `project.html`
+2. `csv-parser.js` parses raw text → array of row objects
+3. `data-processor.js` aggregates rows by consultant and week key → normalized payload
+4. `upload.js` POSTs to `/api/upload/:projectId`
+5. Server merges into `consultants` and `weekly_hours` tables (upsert)
+6. Frontend reloads project data, re-renders metrics / table / chart
+
+---
+
+## Financial Calculations (js/metrics.js)
+
+- **Actuals:** sum of `hours × hourly_rate` for all `weekly_hours` rows where `from_csv = 1` up to the current week
+- **Forecast:** sum of projected `hours × hourly_rate` for future weeks (non-CSV rows, or forecast baseline applied forward)
+- **Variance:** `budget - actuals - forecast`
+- **Burn rate:** configurable — spending velocity over a month or custom date range
+
+---
+
+## Chart Architecture (js/chart.js)
+
+Uses Chart.js 4.4.1 (CDN). Two datasets rendered on the same axis:
+- **Actuals line** (green, solid): historical weeks with CSV data
+- **Forecast line** (blue, dashed): future weeks based on `forecast_hours_per_week`
+- The bridge: actuals line stops at the current week; forecast line starts there — no gap, no overlap
+
+Granularity auto-scales: weekly for short projects, monthly or quarterly for longer ones.
+
+PDF export uses jsPDF 2.5.1 (CDN). The chart canvas must be visible in the DOM during export — if you move the chart to a hidden container, the snapshot will be blank. The current export snapshots the canvas at 800×400 to avoid this.
+
+---
+
+## Design System
+
+Shared across all three apps — do not introduce new values without applying them consistently:
+- Fonts: Poppins (headings), Khula (body) via Google Fonts
+- Primary blue: `#005596`
+- Neutral grays: `#f8f9fa`, `#e5e7eb`
+- Actuals color: green (Chart.js dataset)
+- Forecast color: blue dashed (Chart.js dataset)
 
 ---
 
 ## Code Style
 
-- Vanilla JS and HTML — no frameworks, no build step unless noted above.
-- MUST NOT introduce npm packages, bundlers, or framework dependencies without being explicitly asked.
-- Use `const` and `let`, never `var`.
-- Keep functions small and named clearly — avoid anonymous functions for anything non-trivial.
-- No inline styles — use CSS classes.
-- [Add any project-specific conventions here]
+- Vanilla HTML, CSS, and JavaScript (ES6 modules) only. No frontend framework, no bundler.
+- Do not add npm packages beyond Express and better-sqlite3 without being explicitly asked. Chart.js and jsPDF are loaded via CDN, not npm.
+- `const` and `let` only — never `var`.
+- Named functions — no anonymous functions for anything non-trivial.
+- No inline styles — CSS classes only.
+- JS modules use ES6 `import`/`export`. The server uses `"type": "module"` in package.json.
 
 ---
 
 ## Constraints
 
-- MUST NOT add framework dependencies (React, Vue, etc.) — this is intentionally vanilla JS.
-- NEVER modify portal's auth logic from within this repo — changes to auth belong in `portal`.
+- Do not add React, Vue, or any frontend framework. Intentionally vanilla.
+- Do not add authentication middleware or session libraries speculatively. When auth lands, it will use Entra ID via portal.
+- The `USER_ID` constant in `db.js` is a temporary stand-in for real user identity. Do not build additional logic that hardcodes this ID — it will be replaced when auth is implemented.
+- Soft-delete is the only supported deletion pattern for projects. Do not add hard-delete routes.
+
+---
+
+## Known Issues / Gotchas
+
+- **Auth is fake.** `index.html` redirects to `home.html` on any non-empty form submission. No credentials are checked.
+- **`USER_ID` is hardcoded in `db.js`.** All routes use this constant. There is no per-user filtering in the current implementation.
+- **N+1 query in `projectLoader.js`.** For each consultant in a project, a separate query fetches that consultant's weekly hours. Fine for current data sizes; optimize with a JOIN if projects grow large.
+- **`data.db` is ephemeral on Railway.** SQLite is not persisted across redeploys unless a Railway volume is mounted. Current behavior: seed data re-inserts on cold start; uploaded project data is lost on redeploy.
+- **Chart export requires visible DOM.** The jsPDF canvas snapshot fails silently if the chart container is hidden. Don't move the chart to a `display: none` element.
+- **CSV parser doesn't handle all RFC 4180 edge cases.** Semicolon-delimited or unclosed-quote CSVs will produce bad parses. The parser is tuned for Workday's specific export format.
 
 ---
 
 ## Git Workflow
 
 - Branch naming: `feature/short-description` or `fix/short-description`
-- Commit messages: short, present-tense (e.g. "Add consultant search filter")
-
-## Hosting
-- This app is hosted on Railway. Production URL: https://revenue-analysis-app-production.up.railway.app/
+- Commit messages: present-tense, imperative ("Add burn rate range selector", not "Added...")
 
 ---
 
-## Notes for Claude
+## Deployment
 
-- When in doubt about how auth or routing works, read portal first.
-- Prefer small, targeted edits. Write a plan before making changes that touch multiple files.
+Hosted on Railway. No Dockerfile or railway.json needed — Railway infers Node.js from `package.json` and runs `npm start` → `node server/index.js`. The `postinstall` script (`npm rebuild better-sqlite3`) rebuilds the native SQLite bindings for the Railway environment automatically.
+
+Environment variables:
+- `PORT` — set by Railway automatically (default fallback: 3000)
+- `DB_PATH` — optional; defaults to `data.db` in repo root
+
+To verify production is healthy: https://revenue-analysis-app-production.up.railway.app/
