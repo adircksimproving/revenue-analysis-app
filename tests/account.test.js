@@ -100,9 +100,10 @@ describe('account.html — navigation', () => {
         expect(brand.getAttribute('href')).toBe('home.html');
     });
 
-    it('sign out link points to index.html', () => {
-        const signout = document.querySelector('.btn-signout');
-        expect(signout.getAttribute('href')).toBe('index.html');
+    it('sign out link points to /auth/logout', () => {
+        const signout = [...document.querySelectorAll('.btn-signout')]
+            .find(a => a.textContent.trim() === 'Sign out');
+        expect(signout?.getAttribute('href')).toBe('/auth/logout');
     });
 });
 

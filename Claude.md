@@ -36,17 +36,24 @@ claude --add-dir ~/Documents/projects/internal/revenue-analysis-app-main \
 
 ## Auth integration
 
-Every `/api/*` request goes through `server/middleware/portalAuth.js`:
-1. Reads `portal_sid` cookie.
-2. Calls portal's `/api/me` (cached 60s per session id).
-3. On 401 or no cookie: returns 401 JSON for `/api/*`; redirects to portal for HTML.
-4. Upserts a row in the local `users` table keyed by `portal_user_id` and sets `req.userId` to the local id.
+Portal owns identity, sessions, and roles. This app maintains its own session keyed by a `rev_sid` cookie, populated via portal's cross-domain handoff flow. Cookies don't cross Railway subdomains, so we don't share `portal_sid` directly.
 
-All user-scoped queries use `req.userId` — the old hardcoded `USER_ID` constant is gone. Project, client, and consultant lookups scope by `user_id` to prevent horizontal access across users.
+**Login flow:**
+1. Browser hits `/api/*` without `rev_sid` → 401 JSON. HTML pages → 302 to `/auth/portal`.
+2. `/auth/portal` redirects the browser to `${PORTAL_URL}/auth/handoff?return=<our-callback>`.
+3. Portal mints a one-time, 60s, single-use token and 302s to `/auth/callback?portal_token=...`. If the user isn't logged in to portal, portal routes them through its login page first and resumes the handoff after.
+4. `/auth/callback` exchanges the token server-to-server at `${PORTAL_URL}/api/exchange`, gets `{id, email, name, role, isAdmin}`, upserts into local `users` keyed by `portal_user_id`, creates a local session, and sets `rev_sid`.
+5. Subsequent requests use `rev_sid` — no per-request call to portal.
 
-When an admin impersonates a user in portal, this app sees the impersonated user as the actor and stamps records with their id. That's intentional — actions during impersonation belong to the target, not the admin.
+**Sessions:** in-memory `Map` in `server/middleware/portalAuth.js`, 7-day TTL. Restarts log everyone out (acceptable for an internal tool).
 
-Frontend `js/api.js` redirects to `/auth/portal` (server 302 to portal) on 401.
+**Roles:** read from the portal exchange and stored in the local session, surfaced as `req.user.role` and `req.user.isAdmin`. The local `users.role` column is unused — never read it for auth decisions. Role changes in portal will not propagate until the user's local session expires or they log out and back in.
+
+**Admin UI:** lives in portal. `account.html` shows an "Admin" link to `${PORTAL_URL}/admin.html` only when `me.isAdmin` is true.
+
+**Sign out:** `/auth/logout` clears `rev_sid` and redirects to portal root. It does NOT invalidate the portal session — the user remains signed in to portal and other sibling apps until they sign out from portal directly.
+
+**Cross-user isolation:** every route scopes its DB queries by `req.userId`. Tested in `tests/isolation.test.js`.
 
 Required env var: `PORTAL_URL` (defaults to `http://localhost:3001` for dev).
 
@@ -81,11 +88,11 @@ revenue-analysis-app/
 │   ├── modal.css           # Forecast modal dialog
 │   └── account.css         # User button, avatar, sign-out button
 ├── server/
-│   ├── index.js            # Express entry — auth middleware, route mounting, /api/me
+│   ├── index.js            # Express entry — mounts auth + API routes
 │   ├── db.js               # SQLite schema init, seed data, portal_user_id mapping
 │   ├── projectLoader.js    # Reusable helper: load project + consultants + hours
 │   ├── middleware/
-│   │   └── portalAuth.js   # Verifies portal session, sets req.userId
+│   │   └── portalAuth.js   # Local session store + handoff/callback/logout handlers
 │   └── routes/
 │       ├── projects.js     # CRUD: list, get, create, update, soft-delete, restore
 │       ├── clients.js      # List and create clients

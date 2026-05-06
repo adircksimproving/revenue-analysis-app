@@ -5,24 +5,28 @@ import projectsRouter from './routes/projects.js';
 import uploadRouter from './routes/upload.js';
 import consultantsRouter from './routes/consultants.js';
 import clientsRouter from './routes/clients.js';
-import { requirePortalAuth } from './middleware/portalAuth.js';
+import {
+    requirePortalAuth,
+    startHandoff,
+    handleCallback,
+    handleLogout,
+} from './middleware/portalAuth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
 
-const PORTAL_URL = process.env.PORTAL_URL || 'http://localhost:3001';
-app.get('/auth/portal', (req, res) => res.redirect(PORTAL_URL));
+app.get('/auth/portal', startHandoff);
+app.get('/auth/callback', handleCallback);
+app.get('/auth/logout', handleLogout);
 
 app.get('/api/me', requirePortalAuth, (req, res) => {
     res.json({
-        id: req.userId,
-        portal_user_id: req.portalUser.id,
-        username: req.portalUser.username,
-        is_admin: req.portalUser.is_admin,
-        impersonating: req.portalUser.impersonating,
-        impersonator: req.portalUser.impersonator,
+        id: req.user.id,
+        portalUserId: req.user.portalUserId,
+        username: req.user.username,
+        isAdmin: req.user.isAdmin,
     });
 });
 
