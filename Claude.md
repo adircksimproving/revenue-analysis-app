@@ -9,9 +9,9 @@ These three apps share a common auth layer (portal) and serve overlapping users 
 
 | Repo | Local Path | Role |
 |---|---|---|
-| `portal` | `/Users/austin.dircks/Documents/projects/internal/portal` | Auth and routing hub — handles login and redirects users to other apps |
-| `revenue-analysis-app` | `/Users/austin.dircks/Documents/projects/internal/revenue-analysis-app` | Tracks project financials — billed hours per consultant, project spend forecasting |
-| `consultant-directory-app` | `/Users/austin.dircks/consultant-directory-app` | Search and directory — find consultants and view their work and contact info |
+| `portal` | `~/portal` | Auth + routing hub — owns user accounts, login, and sessions |
+| `revenue-analysis-app` | `~/revenue-analysis-app` | Tracks project financials — billed hours per consultant, project spend forecasting |
+| `consultant-directory-app` | `~/consultant-directory-app` | Search and directory — find consultants and view their work and contact info |
 
 ### How to reference sibling repos
 
@@ -31,10 +31,28 @@ Or reference a specific file directly by path without any setup:
 
 ### Cross-repo rules
 
-- Auth and session handling is owned by `portal`. Before touching anything login-related, read how portal handles auth and follow the same patterns.
+- Auth and session handling is owned by `portal`. This app reads the `portal_sid` cookie from the request and resolves identity by calling portal's `/api/me`. Never validate credentials here.
 - Consultant identity (IDs, names, contact fields) may appear in both `revenue-analysis-app` and `consultant-directory-app`. If changing a consultant data shape, check both repos for impact.
 - Do NOT modify files in sibling repos unless explicitly asked.
 - If a change here requires a follow-up in another repo, say so at the end of your response: "Follow-up needed in [repo]: [what and where]."
+
+---
+
+## Auth integration
+
+Every `/api/*` request goes through `server/middleware/portalAuth.js`:
+1. Reads `portal_sid` cookie.
+2. Calls portal's `/api/me` (cached 60s per session id).
+3. On 401 or no cookie: returns 401 JSON for `/api/*` routes; redirects to portal for HTML.
+4. Upserts a row in the local `users` table keyed by `portal_user_id` and sets `req.userId` to the local id.
+
+All user-scoped queries use `req.userId` (no more hardcoded `USER_ID` constant). Project, client, and consultant lookups scope by `user_id` to prevent horizontal access across users.
+
+When admin impersonates: the portal session reports the impersonated user, so this app stamps records with the impersonated user's id. That's intentional — an admin acting as user X creates data owned by X, not by the admin.
+
+Frontend `js/api.js` redirects to `/auth/portal` on 401 (which the server 302s to the portal URL).
+
+Required env var: `PORTAL_URL` (defaults to `http://localhost:3001` for dev).
 
 ---
 

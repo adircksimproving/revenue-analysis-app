@@ -36,7 +36,7 @@ export function mergeConsultants(database, projectId, incoming) {
 }
 
 router.post('/projects/:id/upload', (req, res) => {
-    const project = db.prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL').get(req.params.id);
+    const project = db.prepare('SELECT id FROM projects WHERE id = ? AND user_id = ? AND deleted_at IS NULL').get(req.params.id, req.userId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
     const { consultants } = req.body;

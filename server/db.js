@@ -61,9 +61,6 @@ db.prepare('INSERT OR IGNORE INTO users (email, name, role) VALUES (?, ?, ?)').r
     'austin.dircks@improving.com', 'Austin Dircks', 'admin'
 );
 
-export const USER_ID = db.prepare('SELECT id FROM users WHERE email = ?')
-    .get('austin.dircks@improving.com').id;
-
 // Migration: add client_id to projects if it doesn't exist yet
 try { db.exec('ALTER TABLE projects ADD COLUMN client_id INTEGER REFERENCES clients(id)'); } catch {}
 
@@ -74,9 +71,19 @@ try { db.exec('ALTER TABLE projects ADD COLUMN end_date TEXT DEFAULT NULL'); } c
 // Migration: track whether weekly hours came from a CSV upload
 try { db.exec('ALTER TABLE weekly_hours ADD COLUMN from_csv INTEGER DEFAULT 0'); } catch {}
 
+// Migration: link local users to portal user identities
+try { db.exec('ALTER TABLE users ADD COLUMN portal_user_id INTEGER'); } catch {}
+db.exec('DROP INDEX IF EXISTS idx_users_portal_user_id');
+db.exec('CREATE UNIQUE INDEX idx_users_portal_user_id ON users(portal_user_id)');
+db.prepare("UPDATE users SET portal_user_id = 1 WHERE email = ? AND portal_user_id IS NULL")
+    .run('austin.dircks@improving.com');
+
 // Seed Costco as the default client and assign it to any unassigned projects (AC2.2.1)
-db.prepare('INSERT OR IGNORE INTO clients (user_id, name) VALUES (?, ?)').run(USER_ID, 'Costco');
-const costcoId = db.prepare('SELECT id FROM clients WHERE user_id = ? AND name = ?').get(USER_ID, 'Costco').id;
-db.prepare('UPDATE projects SET client_id = ? WHERE client_id IS NULL AND user_id = ?').run(costcoId, USER_ID);
+const seedUser = db.prepare('SELECT id FROM users WHERE email = ?').get('austin.dircks@improving.com');
+if (seedUser) {
+    db.prepare('INSERT OR IGNORE INTO clients (user_id, name) VALUES (?, ?)').run(seedUser.id, 'Costco');
+    const costcoId = db.prepare('SELECT id FROM clients WHERE user_id = ? AND name = ?').get(seedUser.id, 'Costco').id;
+    db.prepare('UPDATE projects SET client_id = ? WHERE client_id IS NULL AND user_id = ?').run(costcoId, seedUser.id);
+}
 
 export default db;
