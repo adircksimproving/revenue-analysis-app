@@ -68,7 +68,8 @@
                 <span class="nav-brand-app">Revenue Forecast</span>
             </a>
             <div class="nav-right">
-                <a href="index.html" class="btn-signout">Sign out</a>
+                <a id="adminLink" href="" class="btn-signout" style="display:none;">Admin</a>
+                <a href="/auth/logout" class="btn-signout">Sign out</a>
             </div>
         </nav>
 
@@ -115,6 +116,31 @@
     </div>
 
     <script type="module">
+        const PORTAL_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:3001'
+            : 'https://portal-production-2c38.up.railway.app';
+
+        function initials(name) {
+            return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2)
+                .map(p => p[0].toUpperCase()).join('') || '?';
+        }
+
+        async function loadMe() {
+            try {
+                const me = await fetch('/api/me').then(r => r.ok ? r.json() : null);
+                if (!me) return;
+                document.querySelector('.profile-name').textContent = me.name;
+                document.querySelector('.profile-email').textContent = me.email;
+                document.querySelector('.profile-avatar').textContent = initials(me.name);
+                document.querySelector('.profile-role').textContent = me.isAdmin ? 'Admin' : 'User';
+                if (me.isAdmin) {
+                    const link = document.getElementById('adminLink');
+                    link.href = `${PORTAL_BASE}/admin.html`;
+                    link.style.display = '';
+                }
+            } catch {}
+        }
+
         async function loadClients() {
             const list = document.getElementById('clientsList');
             try {
@@ -156,6 +182,7 @@
             return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
+        loadMe();
         loadClients();
     </script>
 </body>

@@ -10,7 +10,7 @@ export function applySchema(db) {
             id    INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT    UNIQUE NOT NULL,
             name  TEXT    NOT NULL,
-            role  TEXT    NOT NULL DEFAULT 'admin'
+            role  TEXT    NOT NULL DEFAULT 'user'
         );
 
         CREATE TABLE IF NOT EXISTS projects (
