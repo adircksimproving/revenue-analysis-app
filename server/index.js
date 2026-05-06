@@ -25,9 +25,7 @@ app.get('/api/me', requirePortalAuth, (req, res) => {
     res.json({
         id: req.user.id,
         portalUserId: req.user.portalUserId,
-        email: req.user.email,
-        name: req.user.name,
-        role: req.user.role,
+        username: req.user.username,
         isAdmin: req.user.isAdmin,
     });
 });

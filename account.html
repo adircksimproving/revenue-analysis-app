@@ -129,13 +129,13 @@
             try {
                 const me = await fetch('/api/me').then(r => r.ok ? r.json() : null);
                 if (!me) return;
-                document.querySelector('.profile-name').textContent = me.name;
-                document.querySelector('.profile-email').textContent = me.email;
-                document.querySelector('.profile-avatar').textContent = initials(me.name);
+                document.querySelector('.profile-name').textContent = me.username;
+                document.querySelector('.profile-email').textContent = me.username;
+                document.querySelector('.profile-avatar').textContent = initials(me.username);
                 document.querySelector('.profile-role').textContent = me.isAdmin ? 'Admin' : 'User';
                 if (me.isAdmin) {
                     const link = document.getElementById('adminLink');
-                    link.href = `${PORTAL_BASE}/admin.html`;
+                    link.href = `${PORTAL_BASE}/admin`;
                     link.style.display = '';
                 }
             } catch {}

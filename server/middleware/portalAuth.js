@@ -6,12 +6,13 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 const sessions = new Map();
 
+// portal uses `username` (an email address) rather than a separate email field.
 const upsertUser = db.prepare(`
     INSERT INTO users (portal_user_id, email, name, role)
     VALUES (?, ?, ?, 'user')
     ON CONFLICT(portal_user_id) DO UPDATE SET email = excluded.email, name = excluded.name
 `);
-const findUserByPortalId = db.prepare('SELECT id, email, name FROM users WHERE portal_user_id = ?');
+const findUserByPortalId = db.prepare('SELECT id FROM users WHERE portal_user_id = ?');
 
 function readCookie(req, name) {
     const raw = req.headers.cookie;
@@ -35,15 +36,13 @@ function unauthenticated(req, res) {
     return res.redirect('/auth/portal');
 }
 
-function createLocalSession(user) {
+function createLocalSession({ localUserId, portalUserId, username, isAdmin }) {
     const sid = randomBytes(32).toString('hex');
     sessions.set(sid, {
-        localUserId: user.localUserId,
-        portalUserId: user.portalUserId,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isAdmin: user.role === 'admin',
+        localUserId,
+        portalUserId,
+        username,
+        isAdmin,
         expires: Date.now() + SESSION_TTL_MS,
     });
     return sid;
@@ -81,9 +80,7 @@ export function requirePortalAuth(req, res, next) {
     req.user = {
         id: session.localUserId,
         portalUserId: session.portalUserId,
-        email: session.email,
-        name: session.name,
-        role: session.role,
+        username: session.username,
         isAdmin: session.isAdmin,
     };
     next();
@@ -116,15 +113,15 @@ export async function handleCallback(req, res) {
         return res.status(502).send('Auth exchange failed');
     }
 
-    upsertUser.run(portalUser.id, portalUser.email, portalUser.name);
+    // portal.username is the email address; store it in both email and name columns.
+    upsertUser.run(portalUser.id, portalUser.username, portalUser.username);
     const local = findUserByPortalId.get(portalUser.id);
 
     const sid = createLocalSession({
         localUserId: local.id,
         portalUserId: portalUser.id,
-        email: portalUser.email,
-        name: portalUser.name,
-        role: portalUser.role,
+        username: portalUser.username,
+        isAdmin: !!portalUser.is_admin,
     });
     res.cookie('rev_sid', sid, cookieOptions());
 
