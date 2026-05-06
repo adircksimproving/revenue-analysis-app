@@ -7,7 +7,9 @@ const router = Router();
 // Update a consultant's forecast hours per week and overwrite future weekly hours.
 // Unlike CSV upload (which adds hours), forecast is a deliberate SET operation.
 router.put('/:id/forecast', (req, res) => {
-    const consultant = db.prepare('SELECT * FROM consultants WHERE id = ?').get(req.params.id);
+    const consultant = db.prepare(
+        'SELECT c.* FROM consultants c JOIN projects p ON p.id = c.project_id WHERE c.id = ? AND p.user_id = ?'
+    ).get(req.params.id, req.userId);
     if (!consultant) return res.status(404).json({ error: 'Consultant not found' });
 
     const { forecastHoursPerWeek, weeklyHours } = req.body;
@@ -38,7 +40,9 @@ router.put('/:id/forecast', (req, res) => {
 // Save manually entered actual hours for a single week.
 // Refuses to overwrite hours that came from a CSV upload.
 router.put('/:id/actuals', (req, res) => {
-    const consultant = db.prepare('SELECT * FROM consultants WHERE id = ?').get(req.params.id);
+    const consultant = db.prepare(
+        'SELECT c.* FROM consultants c JOIN projects p ON p.id = c.project_id WHERE c.id = ? AND p.user_id = ?'
+    ).get(req.params.id, req.userId);
     if (!consultant) return res.status(404).json({ error: 'Consultant not found' });
 
     const { weekKey, hours } = req.body;

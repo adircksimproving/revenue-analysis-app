@@ -6,6 +6,10 @@ async function request(method, path, body) {
         headers: body != null ? { 'Content-Type': 'application/json' } : {},
         body: body != null ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 401) {
+        window.location.href = '/auth/portal';
+        throw new Error('Redirecting to sign in');
+    }
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(err.error || res.statusText);

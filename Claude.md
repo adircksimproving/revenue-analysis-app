@@ -28,9 +28,27 @@ claude --add-dir ~/Documents/projects/internal/revenue-analysis-app-main \
 
 ### Cross-repo rules
 
-- Auth is owned by portal. The sign-out button and portal logo use a `BASE_URL` variable in `home.html` — keep this pattern when updating navigation.
+- Auth is owned by portal. This app reads the `portal_sid` cookie from each request and resolves identity by calling portal's `/api/me`. Never validate credentials here.
 - Consultant name is the shared identity key with `consultant-directory-app`. Both apps have a `consultants` table keyed by `name`. If you change the name format or add an external ID field, check impact in `consultant-directory-app/server/db.js`.
 - Do NOT modify files in sibling repos unless explicitly asked. If a change here requires follow-up elsewhere, say so: "Follow-up needed in [repo]: [what and where]."
+
+---
+
+## Auth integration
+
+Every `/api/*` request goes through `server/middleware/portalAuth.js`:
+1. Reads `portal_sid` cookie.
+2. Calls portal's `/api/me` (cached 60s per session id).
+3. On 401 or no cookie: returns 401 JSON for `/api/*`; redirects to portal for HTML.
+4. Upserts a row in the local `users` table keyed by `portal_user_id` and sets `req.userId` to the local id.
+
+All user-scoped queries use `req.userId` — the old hardcoded `USER_ID` constant is gone. Project, client, and consultant lookups scope by `user_id` to prevent horizontal access across users.
+
+When an admin impersonates a user in portal, this app sees the impersonated user as the actor and stamps records with their id. That's intentional — actions during impersonation belong to the target, not the admin.
+
+Frontend `js/api.js` redirects to `/auth/portal` (server 302 to portal) on 401.
+
+Required env var: `PORTAL_URL` (defaults to `http://localhost:3001` for dev).
 
 ---
 
@@ -63,9 +81,11 @@ revenue-analysis-app/
 │   ├── modal.css           # Forecast modal dialog
 │   └── account.css         # User button, avatar, sign-out button
 ├── server/
-│   ├── index.js            # Express entry — middleware, route mounting
-│   ├── db.js               # SQLite schema init, seed data, USER_ID constant
+│   ├── index.js            # Express entry — auth middleware, route mounting, /api/me
+│   ├── db.js               # SQLite schema init, seed data, portal_user_id mapping
 │   ├── projectLoader.js    # Reusable helper: load project + consultants + hours
+│   ├── middleware/
+│   │   └── portalAuth.js   # Verifies portal session, sets req.userId
 │   └── routes/
 │       ├── projects.js     # CRUD: list, get, create, update, soft-delete, restore
 │       ├── clients.js      # List and create clients
@@ -76,7 +96,8 @@ revenue-analysis-app/
 ```
 
 **Read before making changes:**
-- `server/db.js` — owns the full schema and the hardcoded `USER_ID`; all routes use this constant
+- `server/db.js` — owns the full schema; the `users` table now has `portal_user_id` mapping local users to portal identities
+- `server/middleware/portalAuth.js` — verifies the portal session cookie and resolves `req.userId`; read this before touching auth or any route's user scoping
 - `js/api.js` — owns all client-server contracts; update here whenever a route signature changes
 - `js/state.js` — shared mutable state; understand what's in it before touching any module that reads from it
 - `server/routes/projects.js` — most complex route file; owns soft-delete, restore, and the project data shape
@@ -105,10 +126,11 @@ npm run test:watch # vitest watch mode
 
 SQLite via `better-sqlite3` (synchronous). File: `data.db` (gitignored, auto-created). Path configurable via `DB_PATH` env var.
 
-**`users`** — account holders
+**`users`** — account holders, mirrored from portal
 ```
-id, email (unique), name, role
-Seeded: austin.dircks@improving.com (admin)
+id, email (unique), name, role, portal_user_id (unique)
+Seeded: austin.dircks@improving.com (portal_user_id = 1)
+Auto-upserted on each authenticated request from portal's /api/me
 ```
 
 **`projects`** — consulting engagements
@@ -141,7 +163,10 @@ Unique: (consultant_id, week_key)
 
 ## API Endpoints
 
-All routes under `/api/`. Single hardcoded `USER_ID` (from `db.js`) used by all routes — no per-request auth.
+All routes under `/api/`. Every request requires a valid portal session — `requirePortalAuth` middleware sets `req.userId`, and routes scope all queries by it. Unauthenticated requests get 401 (JSON) or a redirect to portal (HTML).
+
+`GET /api/me` — returns the resolved local user + portal session info, including impersonation state.
+`GET /auth/portal` — server-side 302 to `PORTAL_URL`, used by the frontend to redirect on 401.
 
 **Projects**
 ```
@@ -234,16 +259,14 @@ Shared across all three apps — do not introduce new values without applying th
 ## Constraints
 
 - Do not add React, Vue, or any frontend framework. Intentionally vanilla.
-- Do not add authentication middleware or session libraries speculatively. When auth lands, it will use Entra ID via portal.
-- The `USER_ID` constant in `db.js` is a temporary stand-in for real user identity. Do not build additional logic that hardcodes this ID — it will be replaced when auth is implemented.
+- Auth lives in portal. Don't add credential validation, session storage, or password handling here. If the auth model needs to change, change it in portal first.
 - Soft-delete is the only supported deletion pattern for projects. Do not add hard-delete routes.
 
 ---
 
 ## Known Issues / Gotchas
 
-- **Auth is fake.** `index.html` redirects to `home.html` on any non-empty form submission. No credentials are checked.
-- **`USER_ID` is hardcoded in `db.js`.** All routes use this constant. There is no per-user filtering in the current implementation.
+- **`/api/me` adds latency to every request.** Each authenticated request makes an HTTP call to portal (cached 60s per session id). If portal is slow or down, this app degrades. Acceptable for an internal tool; revisit if traffic grows.
 - **N+1 query in `projectLoader.js`.** For each consultant in a project, a separate query fetches that consultant's weekly hours. Fine for current data sizes; optimize with a JOIN if projects grow large.
 - **`data.db` is ephemeral on Railway.** SQLite is not persisted across redeploys unless a Railway volume is mounted. Current behavior: seed data re-inserts on cold start; uploaded project data is lost on redeploy.
 - **Chart export requires visible DOM.** The jsPDF canvas snapshot fails silently if the chart container is hidden. Don't move the chart to a `display: none` element.
@@ -265,5 +288,6 @@ Hosted on Railway. No Dockerfile or railway.json needed — Railway infers Node.
 Environment variables:
 - `PORT` — set by Railway automatically (default fallback: 3000)
 - `DB_PATH` — optional; defaults to `data.db` in repo root
+- `PORTAL_URL` — required in prod; the portal base URL used for `/api/me` lookups and the `/auth/portal` redirect
 
 To verify production is healthy: https://revenue-analysis-app-production.up.railway.app/
