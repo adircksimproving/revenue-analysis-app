@@ -135,5 +135,5 @@ export function handleLogout(req, res) {
     const sid = readCookie(req, 'rev_sid');
     destroyLocalSession(sid);
     res.clearCookie('rev_sid', { path: '/' });
-    res.redirect(PORTAL_URL);
+    res.redirect(`${PORTAL_URL}/auth/logout`);
 }
