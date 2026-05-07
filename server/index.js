@@ -21,6 +21,10 @@ app.get('/auth/portal', startHandoff);
 app.get('/auth/callback', handleCallback);
 app.get('/auth/logout', handleLogout);
 
+app.get('/portal', (req, res) => {
+    res.redirect(process.env.PORTAL_URL || 'http://localhost:3001');
+});
+
 app.get('/api/me', requirePortalAuth, (req, res) => {
     res.json({
         id: req.user.id,
