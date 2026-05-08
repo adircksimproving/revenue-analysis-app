@@ -96,6 +96,50 @@ router.delete('/:id', (req, res) => {
     res.json({ success: true });
 });
 
+// Duplicate a project with all its consultants and weekly hours
+router.post('/:id/duplicate', (req, res) => {
+    const source = ownedProject(db, req.params.id, req.userId);
+    if (!source) return res.status(404).json({ error: 'Project not found' });
+
+    const name = req.body.name?.trim();
+    if (!name) return res.status(400).json({ error: 'Project name is required' });
+
+    const conflict = db.prepare(
+        'SELECT id FROM projects WHERE user_id = ? AND name = ? AND deleted_at IS NULL'
+    ).get(req.userId, name);
+    if (conflict) return res.status(409).json({ error: 'A project with that name already exists' });
+
+    const newProjectId = db.transaction(() => {
+        const { lastInsertRowid: projectId } = db.prepare(
+            `INSERT INTO projects (user_id, name, description, budget_value, client_id, start_date, end_date)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).run(req.userId, name, source.description, source.budget_value, source.client_id, source.start_date, source.end_date);
+
+        const consultants = db.prepare('SELECT * FROM consultants WHERE project_id = ?').all(source.id);
+        const getHours = db.prepare('SELECT * FROM weekly_hours WHERE consultant_id = ?');
+        const insertConsultant = db.prepare(
+            `INSERT INTO consultants (project_id, name, rate, forecast_hours_per_week, billed_total)
+             VALUES (?, ?, ?, ?, ?)`
+        );
+        const insertHours = db.prepare(
+            `INSERT INTO weekly_hours (consultant_id, week_key, hours, from_csv) VALUES (?, ?, ?, ?)`
+        );
+
+        for (const c of consultants) {
+            const { lastInsertRowid: newConsultantId } = insertConsultant.run(
+                projectId, c.name, c.rate, c.forecast_hours_per_week, c.billed_total
+            );
+            for (const h of getHours.all(c.id)) {
+                insertHours.run(newConsultantId, h.week_key, h.hours, h.from_csv);
+            }
+        }
+
+        return projectId;
+    })();
+
+    res.status(201).json(loadProject(db, newProjectId));
+});
+
 // Restore a soft-deleted project
 router.post('/:id/restore', (req, res) => {
     const project = db.prepare('SELECT id FROM projects WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL').get(req.params.id, req.userId);
