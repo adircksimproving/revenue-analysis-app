@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { findBudgetIntersection } from '../js/pdf-export.js';
+import { describe, it, expect, vi } from 'vitest';
+import { findBudgetIntersection } from '../js/export-utils.js';
 
 // Silence module-level imports that require DOM or Chart.js
 vi.mock('../js/chart.js', () => ({
     buildChartData: vi.fn(),
+    buildBurndownData: vi.fn(),
     buildChartImageForExport: vi.fn(),
 }));
 

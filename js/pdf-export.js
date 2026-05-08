@@ -1,83 +1,12 @@
 import { buildChartData, buildBurndownData, buildChartImageForExport } from './chart.js';
-import { isWeekFuture } from './date-utils.js';
+import {
+    findBudgetIntersection,
+    findBurndownIntersection,
+    fetchImageAsBase64,
+    computeExportMetrics,
+} from './export-utils.js';
 
-function weekKeyToDate(weekKey) {
-    const match = weekKey.match(/(\d{4})-(\d{2})-W(\d+)/);
-    if (!match) return new Date();
-    return new Date(parseInt(match[1]), parseInt(match[2]) - 1, (parseInt(match[3]) - 1) * 7 + 1);
-}
-
-// Pure function: finds where the forecast line first crosses the flat budget line.
-// Returns { weekLabel, date } or null if no crossing exists.
-export function findBudgetIntersection(weeks, labels, forecastData, budgetValue) {
-    if (!budgetValue || budgetValue <= 0) return null;
-
-    let prevVal = null;
-    let prevIdx = -1;
-
-    for (let i = 0; i < forecastData.length; i++) {
-        const val = forecastData[i];
-        if (val === null || val === undefined) continue;
-
-        if (prevVal !== null) {
-            const crosses = (prevVal < budgetValue && val >= budgetValue) ||
-                            (prevVal > budgetValue && val <= budgetValue);
-            if (crosses) {
-                const frac = (budgetValue - prevVal) / (val - prevVal);
-                const prevDate = weekKeyToDate(weeks[prevIdx]);
-                const currDate = weekKeyToDate(weeks[i]);
-                const intersectDate = new Date(prevDate.getTime() + frac * (currDate.getTime() - prevDate.getTime()));
-                return {
-                    weekLabel: labels[i],
-                    date: intersectDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-                };
-            }
-        }
-
-        prevVal = val;
-        prevIdx = i;
-    }
-
-    return null;
-}
-
-// Pure function: finds where the burn-down forecast line first crosses 0.
-// Returns { weekLabel, date } or null if no crossing exists.
-export function findBurndownIntersection(weeks, labels, forecastData) {
-    let prevVal = null;
-    let prevIdx = -1;
-
-    for (let i = 0; i < forecastData.length; i++) {
-        const val = forecastData[i];
-        if (val === null || val === undefined) continue;
-
-        if (prevVal !== null && prevVal > 0 && val <= 0) {
-            const frac = prevVal / (prevVal - val);
-            const prevDate = weekKeyToDate(weeks[prevIdx]);
-            const currDate = weekKeyToDate(weeks[i]);
-            const intersectDate = new Date(prevDate.getTime() + frac * (currDate.getTime() - prevDate.getTime()));
-            return {
-                weekLabel: labels[i],
-                date: intersectDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-            };
-        }
-
-        prevVal = val;
-        prevIdx = i;
-    }
-
-    return null;
-}
-
-async function fetchImageAsBase64(url) {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-    });
-}
+export { findBudgetIntersection, findBurndownIntersection };
 
 function drawTile(doc, x, y, w, h, label, value, valueColor) {
     doc.setFillColor(255, 255, 255);
@@ -134,8 +63,7 @@ export async function generateProjectPDF(projectName, state) {
     const tileH = 60;
     const tileW3 = (contentWidth - gap * 2) / 3;
 
-    const totalHours = state.consultantsData.reduce((s, c) => s + (c.totalHours || 0), 0);
-    const totalBilled = state.consultantsData.reduce((s, c) => s + (c.billedTotal || 0), 0);
+    const { totalHours, totalBilled, forecastedRevenue, actuals, variance } = computeExportMetrics(state);
 
     drawTile(doc, margin, y, tileW3, tileH,
         'Total Consultants', String(state.consultantsData.length));
@@ -149,14 +77,6 @@ export async function generateProjectPDF(projectName, state) {
     // ── FINANCIAL SUMMARY (4) ───────────────────────────────────────────────
     const tileW4 = (contentWidth - gap * 3) / 4;
 
-    const forecastedRevenue = state.consultantsData.reduce((sum, c) => {
-        const futureHours = Object.entries(c.weeklyHours)
-            .filter(([week]) => isWeekFuture(week))
-            .reduce((s, [, hrs]) => s + hrs, 0);
-        return sum + c.rate * futureHours;
-    }, 0);
-    const actuals = state.actualsValue || 0;
-    const variance = state.budgetValue - actuals - forecastedRevenue;
     const varianceStr = (variance < 0 ? '-$' : '$') + Math.abs(Math.round(variance)).toLocaleString();
     const varianceColor = variance < 0 ? [220, 38, 38] : [5, 150, 105];
 

@@ -6,6 +6,7 @@ import { openForecastModal, initModal } from './modal.js';
 import { api } from './api.js';
 import { populateFromProject } from './data-processor.js';
 import { generateProjectPDF } from './pdf-export.js';
+import { generateProjectPPTX } from './pptx-export.js';
 import { renderChart } from './chart.js';
 
 setCurrentQuarter();
@@ -65,15 +66,22 @@ document.getElementById('btnBurnup').addEventListener('click', () => setChartTyp
 document.getElementById('btnBurndown').addEventListener('click', () => setChartType('burndown'));
 
 function enableExportButton() {
-    const btn = document.getElementById('btnExportPDF');
-    btn.disabled = false;
-    btn.style.opacity = '1';
-    btn.style.cursor = 'pointer';
+    for (const id of ['btnExportPDF', 'btnExportPPTX']) {
+        const btn = document.getElementById(id);
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    }
 }
 
 document.getElementById('btnExportPDF').addEventListener('click', () => {
     generateProjectPDF(state.projectName || 'Project', state)
         .catch(err => console.error('PDF export failed:', err));
+});
+
+document.getElementById('btnExportPPTX').addEventListener('click', () => {
+    generateProjectPPTX(state.projectName || 'Project', state)
+        .catch(err => console.error('PPTX export failed:', err));
 });
 
 document.getElementById('burnRateTimeframe').addEventListener('change', (e) => {

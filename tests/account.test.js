@@ -95,9 +95,9 @@ describe('account.html — placeholders', () => {
 describe('account.html — navigation', () => {
     beforeAll(() => loadPage('account.html'));
 
-    it('brand logo links back to home.html', () => {
+    it('brand logo links to portal dashboard', () => {
         const brand = document.querySelector('.nav-brand');
-        expect(brand.getAttribute('href')).toBe('home.html');
+        expect(brand.getAttribute('href')).toBe('/portal');
     });
 
     it('sign out link points to /auth/logout', () => {
