@@ -29,5 +29,6 @@ export const api = {
     uploadCSV:     (id, consultants)         => request('POST',   `/projects/${id}/upload`, { consultants }),
     updateForecast:(id, forecastHoursPerWeek, weeklyHours) =>
                                                request('PUT',    `/consultants/${id}/forecast`, { forecastHoursPerWeek, weeklyHours }),
+    removeForecast:(id, fromWeekKey)          => request('DELETE', `/consultants/${id}/forecast`, { fromWeekKey }),
     saveActuals:   (id, weekKey, hours)       => request('PUT',    `/consultants/${id}/actuals`,  { weekKey, hours }),
 };

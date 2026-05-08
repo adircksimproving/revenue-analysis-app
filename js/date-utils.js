@@ -144,6 +144,10 @@ export function getCurrentWeekMonday() {
     return snapToMonday(new Date());
 }
 
+export function getCurrentWeekKey() {
+    return getWeekKey(formatDateISO(new Date()));
+}
+
 // Groups an ordered array of week keys by their representative Monday.
 // Returns an array of { monday: Date, keys: string[] } preserving order.
 // Week keys that share the same Monday are merged into one group — this

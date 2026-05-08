@@ -2,10 +2,19 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('../js/metrics.js', () => ({ updateFinancialSummary: vi.fn() }));
 vi.mock('../js/chart.js', () => ({ renderChart: vi.fn() }));
+vi.mock('../js/table.js', () => ({ updateQuarterDisplay: vi.fn() }));
+vi.mock('../js/api.js', () => ({
+    api: {
+        updateForecast: vi.fn().mockResolvedValue({}),
+        removeForecast: vi.fn().mockResolvedValue({ success: true }),
+    },
+}));
 
 import { openForecastModal, initModal } from '../js/modal.js';
 import { state } from '../js/state.js';
 import { updateFinancialSummary } from '../js/metrics.js';
+import { updateQuarterDisplay } from '../js/table.js';
+import { api } from '../js/api.js';
 
 function buildModalDOM() {
     document.body.innerHTML = `
@@ -14,8 +23,13 @@ function buildModalDOM() {
                 <div id="modalTitle"></div>
                 <div id="modalSubtitle"></div>
                 <input id="modalHrsInput" type="number" />
-                <button id="modalCancel"></button>
-                <button id="modalApply"></button>
+                <div class="modal-actions">
+                    <button id="modalRemoveForecast"></button>
+                    <div class="modal-actions-right">
+                        <button id="modalCancel"></button>
+                        <button id="modalApply"></button>
+                    </div>
+                </div>
             </div>
         </div>
         <thead id="tableHeader"></thead>
@@ -156,5 +170,71 @@ describe('applyForecast', () => {
         document.getElementById('modalHrsInput').value = '';
         document.getElementById('modalApply').click();
         expect(state.consultantsData[0].forecastHoursPerWeek).toBe(0);
+    });
+});
+
+// ── removeForecast (via Remove forecast button) ──────────────────────────────
+
+describe('removeForecast', () => {
+    beforeEach(() => {
+        // April 22, 2026 is mid Q2; 2026-04-W4 starts Apr 22, which is current week (not future)
+        // 2026-05-W1 starts May 1 — future
+        state.consultantsData = [makeConsultant({
+            weeklyHours: {
+                '2026-03-W1': 40, // past, non-CSV
+                '2026-04-W4': 40, // current week, non-CSV
+                '2026-05-W1': 40, // future, non-CSV → should be cleared
+                '2026-05-W2': 40, // future, non-CSV → should be cleared
+                '2026-06-W1': 32, // future, non-CSV → should be cleared
+            },
+            csvWeekKeys: ['2026-03-W1'],
+        })];
+    });
+
+    it('closes the modal', () => {
+        openForecastModal(0);
+        document.getElementById('modalRemoveForecast').click();
+        expect(document.getElementById('forecastModal').classList.contains('open')).toBe(false);
+    });
+
+    it('removes future non-CSV weeks from state', () => {
+        openForecastModal(0);
+        document.getElementById('modalRemoveForecast').click();
+        const hours = state.consultantsData[0].weeklyHours;
+        expect(hours['2026-05-W1']).toBeUndefined();
+        expect(hours['2026-05-W2']).toBeUndefined();
+        expect(hours['2026-06-W1']).toBeUndefined();
+    });
+
+    it('preserves past non-CSV weeks in state', () => {
+        openForecastModal(0);
+        document.getElementById('modalRemoveForecast').click();
+        expect(state.consultantsData[0].weeklyHours['2026-03-W1']).toBe(40);
+    });
+
+    it('calls updateQuarterDisplay to re-render the table', () => {
+        openForecastModal(0);
+        document.getElementById('modalRemoveForecast').click();
+        expect(updateQuarterDisplay).toHaveBeenCalled();
+    });
+
+    it('calls updateFinancialSummary to refresh metrics', () => {
+        openForecastModal(0);
+        document.getElementById('modalRemoveForecast').click();
+        expect(updateFinancialSummary).toHaveBeenCalled();
+    });
+
+    it('does not call api.removeForecast when consultant has no id', () => {
+        openForecastModal(0);
+        document.getElementById('modalRemoveForecast').click();
+        expect(api.removeForecast).not.toHaveBeenCalled();
+    });
+
+    it('calls api.removeForecast with the consultant id when consultant has an id', () => {
+        state.consultantsData[0].id = 7;
+        state.projectId = 1;
+        openForecastModal(0);
+        document.getElementById('modalRemoveForecast').click();
+        expect(api.removeForecast).toHaveBeenCalledWith(7, expect.stringMatching(/^\d{4}-\d{2}-W\d+$/));
     });
 });
