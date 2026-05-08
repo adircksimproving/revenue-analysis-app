@@ -99,10 +99,12 @@ export async function generateProjectPPTX(projectName, state) {
     y += tileH + 0.1;
 
     // ── CHART ───────────────────────────────────────────────────────────────
-    // Off-screen render at 800×400; fixed height to fit widescreen slide dimensions
+    // Off-screen render at 800×400 (2:1) — preserve that ratio, center on slide
     const chartImg = buildChartImageForExport(state.consultantsData, state.budgetValue, state.chartType);
-    const chartH = 2.4;
-    slide.addImage({ data: chartImg, x: MARGIN, y, w: CONTENT_W, h: chartH });
+    const chartW = CONTENT_W * 0.55;
+    const chartH = chartW / 2;
+    const chartX = MARGIN + (CONTENT_W - chartW) / 2;
+    slide.addImage({ data: chartImg, x: chartX, y, w: chartW, h: chartH });
     y += chartH + 0.1;
 
     // ── INTERSECTION CALLOUT ─────────────────────────────────────────────────
