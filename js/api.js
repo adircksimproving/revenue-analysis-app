@@ -24,7 +24,8 @@ export const api = {
     getProject:    (id)                      => request('GET',    `/projects/${id}`),
     updateProject: (id, data)                => request('PUT',    `/projects/${id}`,  data),
     deleteProject: (id)                      => request('DELETE', `/projects/${id}`),
-    restoreProject:(id)                      => request('POST',   `/projects/${id}/restore`),
+    restoreProject: (id)                     => request('POST',   `/projects/${id}/restore`),
+    duplicateProject:(id, name)              => request('POST',   `/projects/${id}/duplicate`, { name }),
     uploadCSV:     (id, consultants)         => request('POST',   `/projects/${id}/upload`, { consultants }),
     updateForecast:(id, forecastHoursPerWeek, weeklyHours) =>
                                                request('PUT',    `/consultants/${id}/forecast`, { forecastHoursPerWeek, weeklyHours }),

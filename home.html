@@ -478,6 +478,68 @@
         }
 
         .btn-save:hover { background: #004a80; }
+
+        .duplicate-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .duplicate-overlay.open {
+            display: flex;
+        }
+
+        .duplicate-dialog {
+            background: white;
+            border-radius: 12px;
+            padding: 1.75rem 2rem;
+            max-width: 420px;
+            width: calc(100% - 2rem);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .duplicate-dialog-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 1rem;
+        }
+
+        .duplicate-dialog input {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            margin-bottom: 0.5rem;
+            box-sizing: border-box;
+            transition: border-color 0.15s;
+        }
+
+        .duplicate-dialog input:focus {
+            border-color: #005596;
+            box-shadow: 0 0 0 3px rgba(0,85,150,0.1);
+        }
+
+        .duplicate-dialog-error {
+            font-size: 13px;
+            color: #dc2626;
+            margin-bottom: 0.75rem;
+            min-height: 1.2em;
+        }
+
+        .duplicate-dialog-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
     </style>
 </head>
 <body>
@@ -553,6 +615,18 @@
         </div>
     </div>
 
+    <div class="duplicate-overlay" id="duplicateOverlay">
+        <div class="duplicate-dialog">
+            <div class="duplicate-dialog-title">Duplicate project</div>
+            <input type="text" id="duplicateProjectName" placeholder="Project name" maxlength="100" />
+            <div class="duplicate-dialog-error" id="duplicateError"></div>
+            <div class="duplicate-dialog-actions">
+                <button class="btn-cancel-delete" id="btnCancelDuplicate">Cancel</button>
+                <button class="btn-save" id="btnConfirmDuplicate">Duplicate</button>
+            </div>
+        </div>
+    </div>
+
     <div class="delete-overlay" id="deleteOverlay">
         <div class="delete-dialog">
             <div class="delete-dialog-title">Delete project?</div>
@@ -582,6 +656,7 @@
                     <button class="tile-menu-btn" data-id="${p.id}" aria-label="Project options">⋮</button>
                     <div class="tile-menu-dropdown">
                         <button class="tile-menu-item tile-menu-edit" data-id="${p.id}">Edit project</button>
+                        <button class="tile-menu-item tile-menu-duplicate" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Duplicate project</button>
                         <button class="tile-menu-item tile-menu-delete" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Delete project</button>
                     </div>
                 </div>
@@ -654,11 +729,60 @@
                 return;
             }
 
+            const dupBtn = e.target.closest('.tile-menu-duplicate');
+            if (dupBtn) {
+                e.preventDefault();
+                dupBtn.closest('.tile-menu-dropdown').classList.remove('open');
+                showDuplicateModal(dupBtn.dataset.id, dupBtn.dataset.name);
+                return;
+            }
+
             const deleteBtn = e.target.closest('.tile-menu-delete');
             if (deleteBtn) {
                 e.preventDefault();
                 deleteBtn.closest('.tile-menu-dropdown').classList.remove('open');
                 showDeleteConfirm(deleteBtn.dataset.id, deleteBtn.dataset.name);
+            }
+        });
+
+        // Duplicate modal
+        let pendingDuplicateId = null;
+
+        function showDuplicateModal(id, name) {
+            pendingDuplicateId = id;
+            const input = document.getElementById('duplicateProjectName');
+            input.value = `${name} - COPY`;
+            document.getElementById('duplicateError').textContent = '';
+            document.getElementById('duplicateOverlay').classList.add('open');
+            input.focus();
+            input.select();
+        }
+
+        function closeDuplicateModal() {
+            pendingDuplicateId = null;
+            document.getElementById('duplicateOverlay').classList.remove('open');
+        }
+
+        document.getElementById('btnCancelDuplicate').addEventListener('click', closeDuplicateModal);
+
+        document.getElementById('duplicateOverlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeDuplicateModal();
+        });
+
+        document.getElementById('btnConfirmDuplicate').addEventListener('click', async () => {
+            if (!pendingDuplicateId) return;
+            const name = document.getElementById('duplicateProjectName').value.trim();
+            if (!name) {
+                document.getElementById('duplicateProjectName').focus();
+                return;
+            }
+            const id = pendingDuplicateId;
+            try {
+                await api.duplicateProject(id, name);
+                closeDuplicateModal();
+                await loadProjects();
+            } catch (err) {
+                document.getElementById('duplicateError').textContent = err.message || 'Failed to duplicate project.';
             }
         });
 
