@@ -121,9 +121,10 @@ export function renderTable(consultants, weeks) {
             // Canonical key: last key in the group — aligns with how getWeekKey()
             // assigns dates within the new month (e.g. May 4 → 2026-05-W1).
             const canonicalKey = group.keys[group.keys.length - 1];
+            const hasCsvData = group.keys.some(k => consultant.csvWeekKeys?.includes(k));
+            const isFutureForecast = isWeekFuture(canonicalKey) && !hasCsvData;
 
             if (isCurrentWeek) {
-                const hasCsvData = group.keys.some(k => consultant.csvWeekKeys?.includes(k));
                 if (hasCsvData) {
                     bodyHTML += `<td class="week-cell actual">${Math.round(groupHours)}</td>`;
                 } else {
@@ -133,6 +134,12 @@ export function renderTable(consultants, weeks) {
                         `data-week="${canonicalKey}" data-current-week="true" ` +
                         `value="${displayVal}" placeholder="—" min="0" /></td>`;
                 }
+            } else if (isFutureForecast) {
+                const displayVal = groupHours > 0 ? Math.round(groupHours) : '';
+                bodyHTML += `<td class="week-cell${groupHours > 0 ? ' actual' : ' empty'}">` +
+                    `<input type="number" class="week-input" data-consultant="${consultantIndex}" ` +
+                    `data-week="${canonicalKey}" data-future-forecast="true" ` +
+                    `value="${displayVal}" placeholder="—" min="0" /></td>`;
             } else if (groupHours > 0) {
                 bodyHTML += `<td class="week-cell actual">${Math.round(groupHours)}</td>`;
             } else {
@@ -179,6 +186,7 @@ export function renderTable(consultants, weeks) {
             const consultantIndex = parseInt(e.target.dataset.consultant);
             const week = e.target.dataset.week;
             const isCurrentWeek = e.target.dataset.currentWeek === 'true';
+            const isFutureForecast = e.target.dataset.futureForecast === 'true';
             const value = parseFloat(e.target.value) || 0;
             const consultant = state.consultantsData[consultantIndex];
 
@@ -187,6 +195,12 @@ export function renderTable(consultants, weeks) {
                     await api.saveActuals(consultant.id, week, value);
                 } catch (err) {
                     console.error('Failed to save actuals:', err);
+                }
+            } else if (isFutureForecast && consultant.id) {
+                try {
+                    await api.updateForecast(consultant.id, undefined, { [week]: value });
+                } catch (err) {
+                    console.error('Failed to save forecast week:', err);
                 }
             }
         });

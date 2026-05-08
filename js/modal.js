@@ -1,6 +1,7 @@
 import { state } from './state.js';
-import { getQuarterWeeks, isWeekFuture, isWeekOnOrAfterProjectStart } from './date-utils.js';
+import { getQuarterWeeks, isWeekFuture, isWeekOnOrAfterProjectStart, getCurrentWeekKey } from './date-utils.js';
 import { updateFinancialSummary } from './metrics.js';
+import { updateQuarterDisplay } from './table.js';
 import { api } from './api.js';
 
 let activeModalConsultantIndex = -1;
@@ -54,23 +55,53 @@ async function applyForecast() {
     }
 }
 
+function closeModal() {
+    document.getElementById('forecastModal').classList.remove('open');
+    activeModalConsultantIndex = -1;
+}
+
+async function removeForecast() {
+    if (activeModalConsultantIndex < 0) return;
+    const consultant = state.consultantsData[activeModalConsultantIndex];
+    const fromWeekKey = getCurrentWeekKey();
+
+    closeModal();
+
+    for (const key of Object.keys(consultant.weeklyHours)) {
+        if (isWeekFuture(key) && !consultant.csvWeekKeys?.includes(key)) {
+            delete consultant.weeklyHours[key];
+        }
+    }
+    // Also clear current week if it has a non-CSV forecast entry
+    if (consultant.weeklyHours[fromWeekKey] && !consultant.csvWeekKeys?.includes(fromWeekKey)) {
+        delete consultant.weeklyHours[fromWeekKey];
+    }
+
+    updateQuarterDisplay();
+    updateFinancialSummary();
+
+    if (consultant.id && state.projectId) {
+        try {
+            await api.removeForecast(consultant.id, fromWeekKey);
+        } catch (err) {
+            console.error('Failed to remove forecast:', err);
+        }
+    }
+}
+
 export function initModal() {
-    document.getElementById('modalCancel').addEventListener('click', () => {
-        document.getElementById('forecastModal').classList.remove('open');
-        activeModalConsultantIndex = -1;
-    });
+    document.getElementById('modalCancel').addEventListener('click', closeModal);
 
     document.getElementById('forecastModal').addEventListener('click', (e) => {
-        if (e.target.id === 'forecastModal') {
-            document.getElementById('forecastModal').classList.remove('open');
-            activeModalConsultantIndex = -1;
-        }
+        if (e.target.id === 'forecastModal') closeModal();
     });
 
     document.getElementById('modalApply').addEventListener('click', applyForecast);
 
+    document.getElementById('modalRemoveForecast').addEventListener('click', removeForecast);
+
     document.getElementById('modalHrsInput').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') applyForecast();
-        if (e.key === 'Escape') document.getElementById('modalCancel').click();
+        if (e.key === 'Escape') closeModal();
     });
 }
