@@ -44,12 +44,14 @@ function unauthenticated(req, res) {
     return res.redirect('/auth/portal');
 }
 
-function createLocalSession({ localUserId, portalUserId, username, name, isAdmin }) {
+function createLocalSession({ localUserId, portalUserId, username, firstName, lastName, name, isAdmin }) {
     const sid = randomBytes(32).toString('hex');
     sessions.set(sid, {
         localUserId,
         portalUserId,
         username,
+        firstName,
+        lastName,
         name,
         isAdmin,
         expires: Date.now() + SESSION_TTL_MS,
@@ -72,6 +74,15 @@ function destroyLocalSession(sid) {
     if (sid) sessions.delete(sid);
 }
 
+export function updateSessionName(req, firstName, lastName) {
+    const sid = readCookie(req, 'rev_sid');
+    const s = getLocalSession(sid);
+    if (!s) return;
+    s.firstName = firstName;
+    s.lastName = lastName;
+    s.name = `${firstName} ${lastName}`.trim() || s.name;
+}
+
 const cookieOptions = () => ({
     httpOnly: true,
     sameSite: 'lax',
@@ -91,6 +102,8 @@ export function requirePortalAuth(req, res, next) {
         portalUserId: session.portalUserId,
         username: session.username,
         email: session.username,
+        firstName: session.firstName,
+        lastName: session.lastName,
         name: session.name,
         isAdmin: session.isAdmin,
     };
@@ -124,7 +137,11 @@ export async function handleCallback(req, res) {
         return res.status(502).send('Auth exchange failed');
     }
 
-    const displayName = deriveName(portalUser.username);
+    const firstName = portalUser.firstName || '';
+    const lastName = portalUser.lastName || '';
+    const displayName = (firstName && lastName)
+        ? `${firstName} ${lastName}`
+        : deriveName(portalUser.username);
     upsertUser.run(portalUser.id, portalUser.username, displayName);
     const local = findUserByPortalId.get(portalUser.id);
 
@@ -132,6 +149,8 @@ export async function handleCallback(req, res) {
         localUserId: local.id,
         portalUserId: portalUser.id,
         username: portalUser.username,
+        firstName,
+        lastName,
         name: displayName,
         isAdmin: !!portalUser.is_admin,
     });
