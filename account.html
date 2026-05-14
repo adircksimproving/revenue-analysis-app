@@ -57,6 +57,70 @@
             background: #f9fafb;
             color: #374151;
         }
+
+        .field {
+            margin-bottom: 0.75rem;
+        }
+
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.3rem;
+        }
+
+        .field input[type="text"] {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #1a1a1a;
+            box-sizing: border-box;
+        }
+
+        .field input[type="text"]:focus {
+            outline: none;
+            border-color: #005596;
+            box-shadow: 0 0 0 2px rgba(0, 85, 150, 0.1);
+        }
+
+        .btn-primary {
+            padding: 0.5rem 1.25rem;
+            background: #005596;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #004a84;
+        }
+
+        .auth-flash {
+            padding: 0.6rem 0.9rem;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 0.75rem;
+        }
+
+        .auth-flash-ok {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .auth-flash-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
     </style>
 </head>
 <body>
@@ -82,13 +146,30 @@
         <div class="section-label">General Information</div>
         <div class="account-card">
             <div class="profile-row">
-                <div class="profile-avatar"></div>
+                <div class="profile-avatar" id="profileAvatar"></div>
                 <div class="profile-details">
-                    <div class="profile-name"></div>
-                    <div class="profile-email"></div>
-                    <span class="profile-role"></span>
+                    <div class="profile-name" id="profileName"></div>
+                    <div class="profile-email" id="profileEmail"></div>
+                    <span class="profile-role" id="profileRole"></span>
                 </div>
             </div>
+        </div>
+
+        <!-- Edit Name -->
+        <div class="section-label">Name</div>
+        <div class="account-card">
+            <div id="nameFlash" class="auth-flash" hidden></div>
+            <form id="nameForm">
+                <div class="field">
+                    <label for="firstNameInput">First name</label>
+                    <input type="text" id="firstNameInput" name="firstName" required autocomplete="given-name" />
+                </div>
+                <div class="field">
+                    <label for="lastNameInput">Last name</label>
+                    <input type="text" id="lastNameInput" name="lastName" required autocomplete="family-name" />
+                </div>
+                <button type="submit" class="btn-primary">Update name</button>
+            </form>
         </div>
 
         <!-- Settings -->
@@ -127,10 +208,12 @@
                 const me = await fetch('/api/me').then(r => r.ok ? r.json() : null);
                 if (!me) return;
                 const displayName = me.name || me.email || '';
-                document.querySelector('.profile-name').textContent = displayName;
-                document.querySelector('.profile-email').textContent = me.email || '';
-                document.querySelector('.profile-avatar').textContent = getInitials(displayName);
-                document.querySelector('.profile-role').textContent = me.isAdmin ? 'Admin' : 'User';
+                document.getElementById('profileName').textContent = displayName;
+                document.getElementById('profileEmail').textContent = me.email || '';
+                document.getElementById('profileAvatar').textContent = getInitials(displayName);
+                document.getElementById('profileRole').textContent = me.isAdmin ? 'Admin' : 'User';
+                document.getElementById('firstNameInput').value = me.firstName || '';
+                document.getElementById('lastNameInput').value = me.lastName || '';
                 if (me.isAdmin) {
                     const link = document.getElementById('adminLink');
                     link.href = `${PORTAL_BASE}/admin`;
@@ -138,6 +221,37 @@
                 }
             } catch {}
         }
+
+        function showNameFlash(msg, isError) {
+            const el = document.getElementById('nameFlash');
+            el.textContent = msg;
+            el.className = 'auth-flash ' + (isError ? 'auth-flash-error' : 'auth-flash-ok');
+            el.hidden = false;
+        }
+
+        document.getElementById('nameForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const firstName = document.getElementById('firstNameInput').value.trim();
+            const lastName = document.getElementById('lastNameInput').value.trim();
+            try {
+                const res = await fetch('/api/me/name', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ firstName, lastName }),
+                });
+                if (!res.ok) {
+                    const { error } = await res.json();
+                    showNameFlash(error || 'Failed to update name.', true);
+                    return;
+                }
+                const { name } = await res.json();
+                document.getElementById('profileName').textContent = name;
+                document.getElementById('profileAvatar').textContent = getInitials(name);
+                showNameFlash('Name updated.', false);
+            } catch {
+                showNameFlash('Failed to update name.', true);
+            }
+        });
 
         async function loadClients() {
             const list = document.getElementById('clientsList');

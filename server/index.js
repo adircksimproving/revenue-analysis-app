@@ -10,6 +10,7 @@ import {
     startHandoff,
     handleCallback,
     handleLogout,
+    updateSessionName,
 } from './middleware/portalAuth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,9 +32,39 @@ app.get('/api/me', requirePortalAuth, (req, res) => {
         portalUserId: req.user.portalUserId,
         username: req.user.username,
         email: req.user.email,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
         name: req.user.name,
         isAdmin: req.user.isAdmin,
     });
+});
+
+app.put('/api/me/name', requirePortalAuth, async (req, res) => {
+    const firstName = (req.body.firstName || '').trim();
+    const lastName = (req.body.lastName || '').trim();
+    if (!firstName) return res.status(400).json({ error: 'firstName is required' });
+    if (!lastName) return res.status(400).json({ error: 'lastName is required' });
+
+    const PORTAL_URL = process.env.PORTAL_URL || 'http://localhost:3001';
+    const secret = process.env.PORTAL_API_SECRET;
+    try {
+        const portalRes = await fetch(`${PORTAL_URL}/api/users/name`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${secret}`,
+            },
+            body: JSON.stringify({ portalUserId: req.user.portalUserId, firstName, lastName }),
+        });
+        if (!portalRes.ok) {
+            console.error('Portal name update failed:', await portalRes.text());
+        }
+    } catch (err) {
+        console.error('Portal name update error:', err.message);
+    }
+
+    updateSessionName(req, firstName, lastName);
+    res.json({ ok: true, firstName, lastName, name: `${firstName} ${lastName}` });
 });
 
 app.use('/api/clients', requirePortalAuth, clientsRouter);
