@@ -24,8 +24,8 @@
                 <button id="btnExportPDF" disabled style="padding:0.4rem 0.875rem; background:#005596; color:white; border:none; border-radius:6px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; opacity:0.4; transition:opacity 0.15s;">Export PDF</button>
                 <button id="btnExportPPTX" disabled style="padding:0.4rem 0.875rem; background:#005596; color:white; border:none; border-radius:6px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; opacity:0.4; transition:opacity 0.15s;">Export PPTX</button>
                 <a href="account.html" class="btn-user">
-                    <div class="btn-user-avatar">AD</div>
-                    Austin Dircks
+                    <div class="btn-user-avatar"></div>
+                    <span class="btn-user-name"></span>
                 </a>
                 <a href="/auth/logout" class="btn-signout" style="padding:0.4rem 1rem; border:1px solid #e5e7eb; border-radius:6px; background:white; font-size:13px; font-weight:500; color:#6b7280; text-decoration:none;">Sign out</a>
             </div>
@@ -137,6 +137,10 @@
         </div>
     </div>
 
+    <script type="module">
+        import { loadUserButton } from './js/user.js';
+        loadUserButton();
+    </script>
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

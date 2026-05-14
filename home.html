@@ -552,8 +552,8 @@
             </a>
             <div class="nav-right">
                 <a href="account.html" class="btn-user">
-                    <div class="btn-user-avatar">AD</div>
-                    Austin Dircks
+                    <div class="btn-user-avatar"></div>
+                    <span class="btn-user-name"></span>
                 </a>
                 <a href="/auth/logout" class="btn-signout">Sign out</a>
             </div>
@@ -640,6 +640,8 @@
 
     <script type="module">
         import { api } from './js/api.js';
+        import { loadUserButton } from './js/user.js';
+        loadUserButton();
 
         function escapeHtml(str) {
             return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
