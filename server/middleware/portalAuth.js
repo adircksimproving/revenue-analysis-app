@@ -6,7 +6,15 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 const sessions = new Map();
 
-// portal uses `username` (an email address) rather than a separate email field.
+// portal.username is the email address; derive a display name from the local part.
+// e.g. "austin.dircks@improving.com" → "Austin Dircks"
+function deriveName(email) {
+    const local = String(email || '').split('@')[0];
+    return local.split(/[.\-_]+/).filter(Boolean)
+        .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+        .join(' ') || email;
+}
+
 const upsertUser = db.prepare(`
     INSERT INTO users (portal_user_id, email, name, role)
     VALUES (?, ?, ?, 'user')
@@ -36,12 +44,13 @@ function unauthenticated(req, res) {
     return res.redirect('/auth/portal');
 }
 
-function createLocalSession({ localUserId, portalUserId, username, isAdmin }) {
+function createLocalSession({ localUserId, portalUserId, username, name, isAdmin }) {
     const sid = randomBytes(32).toString('hex');
     sessions.set(sid, {
         localUserId,
         portalUserId,
         username,
+        name,
         isAdmin,
         expires: Date.now() + SESSION_TTL_MS,
     });
@@ -81,6 +90,8 @@ export function requirePortalAuth(req, res, next) {
         id: session.localUserId,
         portalUserId: session.portalUserId,
         username: session.username,
+        email: session.username,
+        name: session.name,
         isAdmin: session.isAdmin,
     };
     next();
@@ -113,14 +124,15 @@ export async function handleCallback(req, res) {
         return res.status(502).send('Auth exchange failed');
     }
 
-    // portal.username is the email address; store it in both email and name columns.
-    upsertUser.run(portalUser.id, portalUser.username, portalUser.username);
+    const displayName = deriveName(portalUser.username);
+    upsertUser.run(portalUser.id, portalUser.username, displayName);
     const local = findUserByPortalId.get(portalUser.id);
 
     const sid = createLocalSession({
         localUserId: local.id,
         portalUserId: portalUser.id,
         username: portalUser.username,
+        name: displayName,
         isAdmin: !!portalUser.is_admin,
     });
     res.cookie('rev_sid', sid, cookieOptions());

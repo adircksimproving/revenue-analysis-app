@@ -1,11 +1,102 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { getInitials, loadUserButton } from '../js/user.js';
 
 function loadPage(filename) {
     const html = readFileSync(resolve(__dirname, '..', filename), 'utf-8');
     document.documentElement.innerHTML = html;
 }
+
+// ── getInitials ───────────────────────────────────────────────────────────────
+
+describe('getInitials', () => {
+    it('returns first letter of each word, up to 2', () => {
+        expect(getInitials('Austin Dircks')).toBe('AD');
+    });
+
+    it('only uses first two words when name has three or more', () => {
+        expect(getInitials('Austin James Dircks')).toBe('AJ');
+    });
+
+    it('handles a single word', () => {
+        expect(getInitials('Austin')).toBe('A');
+    });
+
+    it('returns ? for empty string', () => {
+        expect(getInitials('')).toBe('?');
+    });
+
+    it('returns ? for null/undefined', () => {
+        expect(getInitials(null)).toBe('?');
+        expect(getInitials(undefined)).toBe('?');
+    });
+
+    it('uppercases initials regardless of input case', () => {
+        expect(getInitials('austin dircks')).toBe('AD');
+    });
+
+    it('handles extra whitespace between words', () => {
+        expect(getInitials('  Austin   Dircks  ')).toBe('AD');
+    });
+});
+
+// ── loadUserButton ────────────────────────────────────────────────────────────
+
+describe('loadUserButton — populates btn-user from /api/me', () => {
+    beforeEach(() => {
+        document.body.innerHTML = `
+            <a href="account.html" class="btn-user">
+                <div class="btn-user-avatar"></div>
+                <span class="btn-user-name"></span>
+            </a>`;
+        vi.stubGlobal('fetch', vi.fn());
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('sets the display name from me.name', async () => {
+        fetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ id: 1, name: 'Austin Dircks', email: 'austin.dircks@improving.com', isAdmin: true }),
+        });
+        await loadUserButton();
+        expect(document.querySelector('.btn-user-name').textContent).toBe('Austin Dircks');
+    });
+
+    it('sets avatar initials derived from me.name', async () => {
+        fetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ id: 1, name: 'Austin Dircks', email: 'austin.dircks@improving.com', isAdmin: true }),
+        });
+        await loadUserButton();
+        expect(document.querySelector('.btn-user-avatar').textContent).toBe('AD');
+    });
+
+    it('falls back to email when name is absent', async () => {
+        fetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ id: 1, name: null, email: 'austin.dircks@improving.com', isAdmin: false }),
+        });
+        await loadUserButton();
+        expect(document.querySelector('.btn-user-name').textContent).toBe('austin.dircks@improving.com');
+    });
+
+    it('does not throw when .btn-user is absent from the page', async () => {
+        document.body.innerHTML = '';
+        fetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ id: 1, name: 'Austin Dircks', email: 'austin.dircks@improving.com', isAdmin: true }),
+        });
+        await expect(loadUserButton()).resolves.toBeUndefined();
+    });
+});
 
 // ── account.html ─────────────────────────────────────────────────────────────
 
@@ -33,23 +124,23 @@ describe('account.html — required sections', () => {
     });
 });
 
-describe('account.html — mock user profile', () => {
+describe('account.html — profile DOM structure', () => {
     beforeAll(() => loadPage('account.html'));
 
-    it('displays the user name', () => {
-        expect(document.querySelector('.profile-name').textContent).toBe('Austin Dircks');
+    it('has a .profile-name element ready for dynamic population', () => {
+        expect(document.querySelector('.profile-name')).not.toBeNull();
     });
 
-    it('displays the user email', () => {
-        expect(document.querySelector('.profile-email').textContent).toBe('austin.dircks@improving.com');
+    it('has a .profile-email element ready for dynamic population', () => {
+        expect(document.querySelector('.profile-email')).not.toBeNull();
     });
 
-    it('displays the user role', () => {
-        expect(document.querySelector('.profile-role').textContent).toBe('Admin');
+    it('has a .profile-role element ready for dynamic population', () => {
+        expect(document.querySelector('.profile-role')).not.toBeNull();
     });
 
-    it('shows avatar initials', () => {
-        expect(document.querySelector('.profile-avatar').textContent.trim()).toBe('AD');
+    it('has a .profile-avatar element ready for dynamic population', () => {
+        expect(document.querySelector('.profile-avatar')).not.toBeNull();
     });
 });
 
@@ -66,14 +157,12 @@ describe('account.html — programs and projects', () => {
     });
 
     it('each rendered program has a name', () => {
-        // Programs are loaded dynamically; verify structure when present
         document.querySelectorAll('.program-item').forEach(program => {
             expect(program.querySelector('.program-name').textContent.trim().length).toBeGreaterThan(0);
         });
     });
 
     it('each rendered program has at least one child project', () => {
-        // Programs are loaded dynamically; verify structure when present
         document.querySelectorAll('.program-item').forEach(program => {
             expect(program.querySelectorAll('.project-item').length).toBeGreaterThanOrEqual(1);
         });
@@ -109,7 +198,7 @@ describe('account.html — navigation', () => {
 
 // ── home.html — nav additions ────────────────────────────────────────────────
 
-describe('home.html — user avatar nav button', () => {
+describe('home.html — user avatar nav button structure', () => {
     beforeAll(() => loadPage('home.html'));
 
     it('has a user avatar button in the nav', () => {
@@ -120,11 +209,11 @@ describe('home.html — user avatar nav button', () => {
         expect(document.querySelector('.btn-user').getAttribute('href')).toBe('account.html');
     });
 
-    it('user avatar button shows the user name', () => {
-        expect(document.querySelector('.btn-user').textContent).toContain('Austin Dircks');
+    it('has a .btn-user-avatar element ready for dynamic population', () => {
+        expect(document.querySelector('.btn-user-avatar')).not.toBeNull();
     });
 
-    it('user avatar shows correct initials', () => {
-        expect(document.querySelector('.btn-user-avatar').textContent.trim()).toBe('AD');
+    it('has a .btn-user-name element ready for dynamic population', () => {
+        expect(document.querySelector('.btn-user-name')).not.toBeNull();
     });
 });

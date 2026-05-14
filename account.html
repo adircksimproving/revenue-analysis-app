@@ -82,11 +82,11 @@
         <div class="section-label">General Information</div>
         <div class="account-card">
             <div class="profile-row">
-                <div class="profile-avatar">AD</div>
+                <div class="profile-avatar"></div>
                 <div class="profile-details">
-                    <div class="profile-name">Austin Dircks</div>
-                    <div class="profile-email">austin.dircks@improving.com</div>
-                    <span class="profile-role">Admin</span>
+                    <div class="profile-name"></div>
+                    <div class="profile-email"></div>
+                    <span class="profile-role"></span>
                 </div>
             </div>
         </div>
@@ -116,22 +116,20 @@
     </div>
 
     <script type="module">
+        import { getInitials } from './js/user.js';
+
         const PORTAL_BASE = window.location.hostname === 'localhost'
             ? 'http://localhost:3001'
             : 'https://portal-production-2c38.up.railway.app';
-
-        function initials(name) {
-            return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2)
-                .map(p => p[0].toUpperCase()).join('') || '?';
-        }
 
         async function loadMe() {
             try {
                 const me = await fetch('/api/me').then(r => r.ok ? r.json() : null);
                 if (!me) return;
-                document.querySelector('.profile-name').textContent = me.username;
-                document.querySelector('.profile-email').textContent = me.username;
-                document.querySelector('.profile-avatar').textContent = initials(me.username);
+                const displayName = me.name || me.email || '';
+                document.querySelector('.profile-name').textContent = displayName;
+                document.querySelector('.profile-email').textContent = me.email || '';
+                document.querySelector('.profile-avatar').textContent = getInitials(displayName);
                 document.querySelector('.profile-role').textContent = me.isAdmin ? 'Admin' : 'User';
                 if (me.isAdmin) {
                     const link = document.getElementById('adminLink');
