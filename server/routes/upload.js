@@ -12,6 +12,7 @@ export function mergeConsultants(database, projectId, incoming) {
         VALUES (?, ?, ?, 0)
         ON CONFLICT(project_id, name) DO UPDATE SET
             rate = CASE WHEN excluded.rate > 0 THEN excluded.rate ELSE rate END
+        RETURNING id
     `);
 
     const upsertHours = database.prepare(`
@@ -35,11 +36,11 @@ export function mergeConsultants(database, projectId, incoming) {
 
     const runMerge = database.transaction(() => {
         for (const c of incoming) {
-            const { lastInsertRowid } = upsertConsultant.run(projectId, c.name, c.rate ?? 0);
+            const { id: consultantId } = upsertConsultant.get(projectId, c.name, c.rate ?? 0);
             for (const [weekKey, hours] of Object.entries(c.weeklyHours ?? {})) {
-                if (hours > 0) upsertHours.run(lastInsertRowid, weekKey, hours);
+                if (hours > 0) upsertHours.run(consultantId, weekKey, hours);
             }
-            recalcBilledTotal.run(lastInsertRowid);
+            recalcBilledTotal.run(consultantId);
         }
     });
 
