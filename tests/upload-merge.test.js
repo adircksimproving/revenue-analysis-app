@@ -35,8 +35,8 @@ describe('mergeConsultants — inserts', () => {
         expect(getConsultant(db, 1, 'Alice').rate).toBe(150);
     });
 
-    it('stores billedTotal', () => {
-        mergeConsultants(db, 1, [{ name: 'Alice', rate: 150, billedTotal: 1200, weeklyHours: {} }]);
+    it('computes billedTotal from weekly_hours * rate', () => {
+        mergeConsultants(db, 1, [{ name: 'Alice', rate: 150, billedTotal: 1200, weeklyHours: { '2026-04-W1': 8 } }]);
         expect(getConsultant(db, 1, 'Alice').billed_total).toBe(1200);
     });
 
@@ -62,22 +62,22 @@ describe('mergeConsultants — inserts', () => {
     });
 });
 
-describe('mergeConsultants — merge (additive) behaviour', () => {
+describe('mergeConsultants — re-upload behaviour', () => {
     let db;
     beforeEach(() => { db = makeDb(); });
 
-    it('accumulates billedTotal across uploads', () => {
-        mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 600, weeklyHours: {} }]);
-        mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 400, weeklyHours: {} }]);
+    it('sums billedTotal across uploads covering different weeks', () => {
+        mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 600, weeklyHours: { '2026-04-W1': 6 } }]);
+        mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 400, weeklyHours: { '2026-04-W2': 4 } }]);
         expect(getConsultant(db, 1, 'Alice').billed_total).toBe(1000);
     });
 
-    it('accumulates hours for the same week across uploads', () => {
+    it('replaces hours for the same week on re-upload (no double-counting)', () => {
         mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 0, weeklyHours: { '2026-04-W1': 20 } }]);
         mergeConsultants(db, 1, [{ name: 'Alice', rate: 100, billedTotal: 0, weeklyHours: { '2026-04-W1': 15 } }]);
         const { id } = getConsultant(db, 1, 'Alice');
         const row = getHours(db, id).find(h => h.week_key === '2026-04-W1');
-        expect(row.hours).toBe(35);
+        expect(row.hours).toBe(15);
     });
 
     it('adds new weeks without touching existing ones', () => {

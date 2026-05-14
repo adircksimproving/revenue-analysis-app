@@ -9,26 +9,37 @@ const router = Router();
 export function mergeConsultants(database, projectId, incoming) {
     const upsertConsultant = database.prepare(`
         INSERT INTO consultants (project_id, name, rate, billed_total)
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, 0)
         ON CONFLICT(project_id, name) DO UPDATE SET
-            rate        = CASE WHEN excluded.rate > 0 THEN excluded.rate ELSE rate END,
-            billed_total = billed_total + excluded.billed_total
+            rate = CASE WHEN excluded.rate > 0 THEN excluded.rate ELSE rate END
     `);
 
     const upsertHours = database.prepare(`
         INSERT INTO weekly_hours (consultant_id, week_key, hours, from_csv)
         VALUES (?, ?, ?, 1)
         ON CONFLICT(consultant_id, week_key) DO UPDATE SET
-            hours    = hours + excluded.hours,
+            hours    = excluded.hours,
             from_csv = 1
+    `);
+
+    // Recompute from weekly_hours after each upload so repeated uploads never double-count.
+    const recalcBilledTotal = database.prepare(`
+        UPDATE consultants
+        SET billed_total = (
+            SELECT COALESCE(SUM(wh.hours), 0) * consultants.rate
+            FROM weekly_hours wh
+            WHERE wh.consultant_id = consultants.id AND wh.from_csv = 1
+        )
+        WHERE id = ?
     `);
 
     const runMerge = database.transaction(() => {
         for (const c of incoming) {
-            const { lastInsertRowid } = upsertConsultant.run(projectId, c.name, c.rate ?? 0, c.billedTotal ?? 0);
+            const { lastInsertRowid } = upsertConsultant.run(projectId, c.name, c.rate ?? 0);
             for (const [weekKey, hours] of Object.entries(c.weeklyHours ?? {})) {
                 if (hours > 0) upsertHours.run(lastInsertRowid, weekKey, hours);
             }
+            recalcBilledTotal.run(lastInsertRowid);
         }
     });
 
