@@ -124,16 +124,12 @@ export function renderTable(consultants, weeks) {
             const hasCsvData = group.keys.some(k => consultant.csvWeekKeys?.includes(k));
             const isFutureForecast = isWeekFuture(canonicalKey) && !hasCsvData;
 
-            if (isCurrentWeek) {
-                if (hasCsvData) {
-                    bodyHTML += `<td class="week-cell actual">${Math.round(groupHours)}</td>`;
-                } else {
-                    const displayVal = groupHours > 0 ? Math.round(groupHours) : '';
-                    bodyHTML += `<td class="week-cell${groupHours > 0 ? ' actual' : ' empty'}">` +
-                        `<input type="number" class="week-input" data-consultant="${consultantIndex}" ` +
-                        `data-week="${canonicalKey}" data-current-week="true" ` +
-                        `value="${displayVal}" placeholder="—" min="0" /></td>`;
-                }
+            if (isCurrentWeek && !hasCsvData) {
+                const displayVal = groupHours > 0 ? Math.round(groupHours) : '';
+                bodyHTML += `<td class="week-cell${groupHours > 0 ? ' actual' : ' empty'}">` +
+                    `<input type="number" class="week-input" data-consultant="${consultantIndex}" ` +
+                    `data-week="${canonicalKey}" data-current-week="true" ` +
+                    `value="${displayVal}" placeholder="—" min="0" /></td>`;
             } else if (isFutureForecast) {
                 const displayVal = groupHours > 0 ? Math.round(groupHours) : '';
                 bodyHTML += `<td class="week-cell${groupHours > 0 ? ' actual' : ' empty'}">` +
@@ -143,9 +139,7 @@ export function renderTable(consultants, weeks) {
             } else if (groupHours > 0) {
                 bodyHTML += `<td class="week-cell actual">${Math.round(groupHours)}</td>`;
             } else {
-                bodyHTML += `<td class="week-cell empty"><input type="number" class="week-input" ` +
-                    `data-consultant="${consultantIndex}" data-week="${canonicalKey}" ` +
-                    `value="" placeholder="—" min="0" /></td>`;
+                bodyHTML += `<td class="week-cell empty">—</td>`;
             }
         });
 
