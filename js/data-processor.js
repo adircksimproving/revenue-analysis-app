@@ -31,7 +31,7 @@ export function processCSVRows(rows, { startDate, endDate } = {}) {
             map[name] = { name, rate: 0, totalHours: 0, totalBilled: 0, weeklyHours: {} };
         }
 
-        const rateRaw = row['Rate to Bill'] || row['rate to bill'] || row['Rate'] || row['rate'];
+        const rateRaw = row['Rate To Bill'] || row['Rate to Bill'] || row['rate to bill'] || row['Rate'] || row['rate'];
         if (rateRaw) {
             const rate = parseFloat(rateRaw.toString().replace(/[$,]/g, ''));
             if (!isNaN(rate) && rate > 0) map[name].rate = rate;
@@ -39,7 +39,7 @@ export function processCSVRows(rows, { startDate, endDate } = {}) {
 
         if (!isNaN(hours)) map[name].totalHours += hours;
 
-        const amountRaw = row['Amount to Bill'] || row['amount to bill'] || row['Amount to bill'];
+        const amountRaw = row['Amount To Bill'] || row['Amount to Bill'] || row['amount to bill'] || row['Amount to bill'];
         if (amountRaw) {
             const amount = parseFloat(amountRaw.toString().replace(/[$,]/g, ''));
             if (!isNaN(amount)) map[name].totalBilled += amount;
